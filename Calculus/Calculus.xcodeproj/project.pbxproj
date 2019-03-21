@@ -7,13 +7,28 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D512F12122441D280010B154 /* CalculusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D512F12022441D280010B154 /* CalculusTests.swift */; };
+		D512F12322441D280010B154 /* Calculus.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D541452F22431EB300CAA013 /* Calculus.framework */; };
 		D541453422431EB300CAA013 /* Calculus.h in Headers */ = {isa = PBXBuildFile; fileRef = D541453222431EB300CAA013 /* Calculus.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		D541453B22431EC600CAA013 /* Derivative.swift in Sources */ = {isa = PBXBuildFile; fileRef = D541453A22431EC600CAA013 /* Derivative.swift */; };
 		D541453E22431F8900CAA013 /* RungeKutta4.swift in Sources */ = {isa = PBXBuildFile; fileRef = D541453D22431F8900CAA013 /* RungeKutta4.swift */; };
 		D541454022431F9D00CAA013 /* RungeKuttaPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = D541453F22431F9D00CAA013 /* RungeKuttaPoint.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		D512F12422441D280010B154 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D541452622431EB200CAA013 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D541452E22431EB200CAA013;
+			remoteInfo = Calculus;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		D512F11E22441D270010B154 /* CalculusTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CalculusTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D512F12022441D280010B154 /* CalculusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalculusTests.swift; sourceTree = "<group>"; };
+		D512F12222441D280010B154 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D541452F22431EB300CAA013 /* Calculus.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Calculus.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D541453222431EB300CAA013 /* Calculus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Calculus.h; sourceTree = "<group>"; };
 		D541453322431EB300CAA013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -23,6 +38,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		D512F11B22441D270010B154 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D512F12322441D280010B154 /* Calculus.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D541452C22431EB200CAA013 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -33,10 +56,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		D512F11F22441D280010B154 /* CalculusTests */ = {
+			isa = PBXGroup;
+			children = (
+				D512F12022441D280010B154 /* CalculusTests.swift */,
+				D512F12222441D280010B154 /* Info.plist */,
+			);
+			path = CalculusTests;
+			sourceTree = "<group>";
+		};
 		D541452522431EB200CAA013 = {
 			isa = PBXGroup;
 			children = (
 				D541453122431EB300CAA013 /* Calculus */,
+				D512F11F22441D280010B154 /* CalculusTests */,
 				D541453022431EB300CAA013 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -45,6 +78,7 @@
 			isa = PBXGroup;
 			children = (
 				D541452F22431EB300CAA013 /* Calculus.framework */,
+				D512F11E22441D270010B154 /* CalculusTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -75,6 +109,24 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
+		D512F11D22441D270010B154 /* CalculusTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D512F12822441D280010B154 /* Build configuration list for PBXNativeTarget "CalculusTests" */;
+			buildPhases = (
+				D512F11A22441D270010B154 /* Sources */,
+				D512F11B22441D270010B154 /* Frameworks */,
+				D512F11C22441D270010B154 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D512F12522441D280010B154 /* PBXTargetDependency */,
+			);
+			name = CalculusTests;
+			productName = CalculusTests;
+			productReference = D512F11E22441D270010B154 /* CalculusTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		D541452E22431EB200CAA013 /* Calculus */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = D541453722431EB300CAA013 /* Build configuration list for PBXNativeTarget "Calculus" */;
@@ -99,9 +151,13 @@
 		D541452622431EB200CAA013 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
+				LastSwiftUpdateCheck = 1010;
 				LastUpgradeCheck = 1010;
 				ORGANIZATIONNAME = "Luiz Rodrigo Martins Barbosa";
 				TargetAttributes = {
+					D512F11D22441D270010B154 = {
+						CreatedOnToolsVersion = 10.1;
+					};
 					D541452E22431EB200CAA013 = {
 						CreatedOnToolsVersion = 10.1;
 						LastSwiftMigration = 1010;
@@ -121,11 +177,19 @@
 			projectRoot = "";
 			targets = (
 				D541452E22431EB200CAA013 /* Calculus */,
+				D512F11D22441D270010B154 /* CalculusTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		D512F11C22441D270010B154 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D541452D22431EB200CAA013 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -136,6 +200,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		D512F11A22441D270010B154 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D512F12122441D280010B154 /* CalculusTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D541452B22431EB200CAA013 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -148,7 +220,51 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		D512F12522441D280010B154 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D541452E22431EB200CAA013 /* Calculus */;
+			targetProxy = D512F12422441D280010B154 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		D512F12622441D280010B154 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 7BK8NL3DYL;
+				INFOPLIST_FILE = CalculusTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.developercity.CalculusTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 4.2;
+			};
+			name = Debug;
+		};
+		D512F12722441D280010B154 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 7BK8NL3DYL;
+				INFOPLIST_FILE = CalculusTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.developercity.CalculusTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 4.2;
+			};
+			name = Release;
+		};
 		D541453522431EB300CAA013 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -328,6 +444,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		D512F12822441D280010B154 /* Build configuration list for PBXNativeTarget "CalculusTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D512F12622441D280010B154 /* Debug */,
+				D512F12722441D280010B154 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		D541452922431EB200CAA013 /* Build configuration list for PBXProject "Calculus" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

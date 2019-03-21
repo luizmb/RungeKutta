@@ -27,6 +27,9 @@ public func derivativePerpendicular(h: Decimal = 1e-16, _ f: @escaping DecimalFn
 }
 
 public func isDifferentiable(at point: Decimal, _ fn: @escaping DecimalFn) -> Bool {
+    // TODO: `{ x in pow(x, (1/3)) }, point: 0, expectedIsDifferentiable: false`
+    //       This should be false, but it's currently returning true. If the point creates a vertical tangent
+    //       the function is not differentiable, but our algorithm currently can't detect that.
     let limitApproach: Decimal = 1e-16
     let tolerance: Decimal = 1e-15
     let fromLeft = derivative(h: -limitApproach, fn)(point)
