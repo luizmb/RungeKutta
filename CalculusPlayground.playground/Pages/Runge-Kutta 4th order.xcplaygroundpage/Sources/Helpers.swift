@@ -1,8 +1,8 @@
 import Foundation
-import Calculus
+import Math
 
 public func isWhole(tolerance: Decimal) -> (Decimal) -> Bool {
-    return { t in
+    { t in
         abs(t - Decimal(round(NSDecimalNumber(decimal: t).doubleValue))) < tolerance
     }
 }
