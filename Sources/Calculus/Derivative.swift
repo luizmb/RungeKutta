@@ -3,153 +3,73 @@ import Foundation
 import Math
 import RealNumber
 
-public enum DerivativeFunction<T: ℝ> {
-    case firstDerivative(function: Fn<T>, method: Method)
-    indirect case higherOrder(derivative: DerivativeFunction<T>)
+/// Pairs a function `f` with a `DerivativeMethod` to obtain a numerical
+/// derivative `Fn` that can be evaluated at any point.
+///
+/// `DerivativeFunction` is a small struct — it just remembers the underlying
+/// function and the method to apply, and exposes the resulting slope function.
+/// All the algorithmic variety (which stencil, what step strategy, what order)
+/// lives in ``DerivativeMethod``, which is open-extensible thanks to the witness
+/// pattern.
+public struct DerivativeFunction<Scalar: ℝ> {
+    /// The function being differentiated. Differentiating again starts from this
+    /// function's *slope* (via composition), not the original.
+    public let underlyingFunction: Fn<Scalar>
+    public let method: DerivativeMethod<Scalar>
 
-    /// "For basic central differences, the optimal step is the cube-root of machine epsilon."
-    /// https://en.wikipedia.org/wiki/Numerical_differentiation#Step_size
-    public enum StepCalculator {
-        case epsilonSquareRoot
-        case epsilonCubeRoot
-        case adaptative
-        case adaptativeZeroHigh
-        case customHforX(Fn<T>)
-        case constant(h: T)
-
-        fileprivate func calculate(x: T, fn: Fn<T>) -> T {
-            switch self {
-            case .epsilonSquareRoot: T.epsilon.squareRoot()
-            case .epsilonCubeRoot: T.epsilon.cubeRoot()
-            case .adaptative: T.epsilon.squareRoot() * x
-            case .adaptativeZeroHigh: x == 0 ? T.epsilon : T.epsilon.squareRoot() * x
-            case let .customHforX(hForX): hForX(x)
-            case let .constant(h): h
-            }
-        }
+    public init(underlyingFunction: Fn<Scalar>, method: DerivativeMethod<Scalar>) {
+        self.underlyingFunction = underlyingFunction
+        self.method = method
     }
 
-    public enum Method {
-        case newtonDifferenceQuotient(StepCalculator)
-        case backwardDifferencing(StepCalculator)
-        case symmetricDifferenceQuotient(StepCalculator)
-        case fivePoint(StepCalculator)
-        case custom(deriving: (Fn<T>) -> Fn<T>)
+    public var order: Int { method.order }
+    public var slopeFunction: Fn<Scalar> { method.deriving(underlyingFunction) }
 
-        public func deriving(fn: Fn<T>) -> Fn<T> {
-            switch self {
-            case let .newtonDifferenceQuotient(stepCalculator):
-                Fn { x in
-                    let h = stepCalculator.calculate(x: x, fn: fn)
-                    return (fn(x + h) - fn(x)) / h
-                }
-            case let .backwardDifferencing(stepCalculator):
-                Fn { x in
-                    let h = stepCalculator.calculate(x: x, fn: fn)
-                    return (fn(x) - fn(x - h)) / h
-                }
-            case let .symmetricDifferenceQuotient(stepCalculator):
-                Fn { x in
-                    let h = stepCalculator.calculate(x: x, fn: fn)
-                    return (fn(x + h) - fn(x - h)) / (2*h)
-                }
-            case let .fivePoint(stepCalculator):
-                Fn { x in
-                    let h = stepCalculator.calculate(x: x, fn: fn)
-                    // Five-point central-difference stencil:
-                    //   f'(x) ≈ [ −f(x + 2h) + 8·f(x + h) − 8·f(x − h) + f(x − 2h) ] / (12h)
-                    // Derived by combining Taylor expansions to cancel the O(h²) and O(h³) error
-                    // terms; the remaining error is O(h⁴). See e.g.
-                    // https://en.wikipedia.org/wiki/Five-point_stencil
-                    let firstPoint = -fn(x + 2*h)
-                    let secondPoint = 8*fn(x + h)
-                    let thirdPoint = -8*fn(x - h)
-                    let fourthPoint = fn(x - 2*h)
-                    return (firstPoint + secondPoint + thirdPoint + fourthPoint) / (12 * h)
-                }
-            case let .custom(dx):
-                dx(fn)
-            }
-        }
-    }
+    public func callAsFunction(x: Scalar) -> Scalar { slopeFunction(x) }
 
-    public var method: Method {
-        switch self {
-        case let .firstDerivative(_, method):
-            method
-        case let .higherOrder(derivative):
-            derivative.method
-        }
-    }
-
-    public var slopeFunction: Fn<T> {
-        Fn { x in
-            let innerFunction = switch self {
-            case let .firstDerivative(function, _):
-                function
-            case let .higherOrder(derivative):
-                derivative.slopeFunction
-            }
-
-            return method.deriving(fn: innerFunction)(x)
-        }
-    }
-
-    public func perpendicular() -> Fn<T> {
+    /// Perpendicular-slope function: at every point, `−1 / slopeFunction(x)`. If
+    /// the slope is a tangent, this is the slope of the line perpendicular to it.
+    public func perpendicular() -> Fn<Scalar> {
         slopeFunction.perpendicularSlope()
     }
 
-    public func callAsFunction(x: T) -> T {
-        slopeFunction(x)
-    }
-
-    /// True if `fn` looks differentiable at `x`: the backward and forward difference
-    /// quotients at step `h` agree to within `h`. Catches corners (e.g. `|x|` at 0,
-    /// where left slope is −1 and right slope is +1) and jumps in the derivative.
+    /// True if the underlying function looks differentiable at `x` to the working
+    /// step `h`: the backward and forward difference quotients agree to within `√h`.
     ///
-    /// **Known limitation:** does *not* catch vertical-tangent points like
-    /// `x^(1/3)` at 0, where the function is not differentiable but the left and right
-    /// derivatives agree (both are +∞). Detecting those would require checking the
-    /// *magnitude* of the slope against some threshold, which depends on the use case.
-    /// True if `fn` looks differentiable at `x`: the backward and forward difference
-    /// quotients at step `h` agree to within `√h`.
-    ///
-    /// The `√h` (not `h`) tolerance matters: even perfectly smooth functions have
-    /// finite-difference truncation error of order `O(h)` from one-sided differences,
-    /// so a `< h` threshold would reject everything. Corners (`|x|` at 0) have a
-    /// **constant** slope jump independent of `h` — they fail the `√h` threshold
-    /// cleanly. Vertical-tangent points (`x^(1/3)` at 0) also fail because Swift's
-    /// `pow(-h, 1/3)` returns `NaN`, which makes `fromLeft` `NaN`, and `NaN < anything`
-    /// is `false`.
-    public func isDifferentiable(at x: T, h: T) -> Bool {
+    /// The `√h` (not `h`) tolerance matters: smooth functions have one-sided
+    /// truncation error of order `O(h)`, so a `< h` threshold would reject them.
+    /// Corners (`|x|` at 0) have a constant slope jump independent of `h` —
+    /// they fail the `√h` threshold cleanly. Vertical-tangent points (`x^(1/3)`
+    /// at 0) also fail because Swift's `pow(-h, 1/3)` returns `NaN`, which
+    /// propagates through the `<` comparison as `false`.
+    public func isDifferentiable(at x: Scalar, h: Scalar) -> Bool {
         let fn = underlyingFunction
         let fromLeft = (fn(x) - fn(x - h)) / h
         let fromRight = (fn(x + h) - fn(x)) / h
         return abs(fromLeft - fromRight) < h.squareRoot()
     }
 
-    /// The function being differentiated. For a chain of `.higherOrder` cases this is
-    /// the previous derivative (one rung down the chain), reaching the original
-    /// `.firstDerivative` function at the bottom.
-    public var underlyingFunction: Fn<T> {
-        switch self {
-        case let .firstDerivative(function, _):
-            function
-        case let .higherOrder(derivative):
-            derivative.slopeFunction
-        }
+    /// Differentiate the slope again, re-using the same method. **Accuracy degrades**
+    /// with each chain — see ``DerivativeMethod/Compose/repeated(_:times:)``. Prefer
+    /// passing an explicit direct higher-order method (e.g.
+    /// `CentralStencil.fivePoint(order: 4, …)`) via ``differentiate(method:)``.
+    public func differentiate() -> DerivativeFunction<Scalar> {
+        differentiate(method: method)
     }
-}
 
-extension DerivativeFunction {
-    public func differentiate() -> DerivativeFunction<T> {
-        DerivativeFunction.higherOrder(derivative: self)
+    /// Differentiate the slope again with a new method. Useful for switching from
+    /// a chained 1st-order method to a direct higher-order one without rebuilding
+    /// the whole pipeline.
+    public func differentiate(method: DerivativeMethod<Scalar>) -> DerivativeFunction<Scalar> {
+        DerivativeFunction(underlyingFunction: slopeFunction, method: method)
     }
 }
 
 extension Endo where A: ℝ {
-    public func differentiate(method: DerivativeFunction<A>.Method) -> DerivativeFunction<A> {
-        DerivativeFunction.firstDerivative(function: self, method: method)
+    /// Wrap this function as the underlying of a ``DerivativeFunction`` driven by
+    /// `method`. Entry point into the calculus pipeline.
+    public func differentiate(method: DerivativeMethod<A>) -> DerivativeFunction<A> {
+        DerivativeFunction(underlyingFunction: self, method: method)
     }
 
     public func point(at x: A) -> BidimensionalPoint<A>? {
@@ -159,14 +79,9 @@ extension Endo where A: ℝ {
     }
 
     /// Returns the perpendicular-slope function: at every point, the negative
-    /// reciprocal of `self(x)`. If `self` is a tangent slope, this is the slope of
-    /// the line perpendicular to it.
-    ///
-    /// (This used to be named `invert()`, which was misleading — it computes the
-    /// negative reciprocal, not the function inverse.)
+    /// reciprocal of `self(x)`. If `self` is a tangent slope, this is the slope
+    /// of the line perpendicular to it.
     public func perpendicularSlope() -> Self {
-        Self { x in
-            -1 / self(x)
-        }
+        Self { x in -1 / self(x) }
     }
 }
