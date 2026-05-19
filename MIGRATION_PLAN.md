@@ -89,9 +89,13 @@ End-state Package.swift: only those six targets, with FP added as a dependency. 
 
 Also: `calculateNextPoint`'s `currentPointInTime` parameter is unused — it's only there to fit `reduce`'s shape. Fine, but worth a one-line `_` comment.
 
-## Playground is broken vs. current source
+## ~~Playground is broken vs. current source~~ — deleted 2026-05-19
 
-[CalculusPlayground.playground/Pages/Runge-Kutta 4th order.xcplaygroundpage/Contents.swift](CalculusPlayground.playground/Pages/Runge-Kutta%204th%20order.xcplaygroundpage/Contents.swift) and `Sources/Helpers.swift` still reference the old API (`RungeKuttaPoint`, `rungeKutta4`, `differentialEquation`, `equationExactSolution`) that was deleted along with the old `Calculus/Calculus.xcodeproj/`. The `git status` confirms these files are still around but won't compile against current `Sources/RungeKutta/`. Either resurrect the helpers with the new `BidimensionalPoint`-based API or delete the playground.
+The `CalculusPlayground.playground` referenced the old `RungeKuttaPoint` /
+`rungeKutta4` / `differentialEquation` / `equationExactSolution` API that was
+deleted years ago, and hadn't compiled since. Removed entirely. If interactive
+exploration is wanted later, the tests already cover the algorithms end-to-end;
+a new playground (or DocC tutorial) can be written against the current API.
 
 ## DerivativeFunction — three real issues
 
