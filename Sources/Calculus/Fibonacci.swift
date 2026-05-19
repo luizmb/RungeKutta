@@ -1,5 +1,5 @@
+import CoreFP
 import Foundation
-import Morphisms
 import RealNumber
 
 public struct Fibonacci { 

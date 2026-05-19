@@ -1,9 +1,19 @@
+import CoreFP
 import Foundation
-import Morphisms
 import RealNumber
 
-public typealias Fn<NumericType> = Endomorphism<NumericType> where NumericType: ℝ
-
-extension Fn where Input == Output, T: ℝ {
-    public typealias NumericType = T
-}
+/// A real-valued endomorphism — a function `(T) -> T` over some real-number type `T`.
+///
+/// `Fn<T>` is a thin numerical-context typealias over `CoreFP.Endo<T>`. It lets the
+/// calculus algorithms in this library spell their input shape briefly:
+///
+/// ```swift
+/// let square: Fn<Double> = Fn { $0 * $0 }
+/// let derivative = square.differentiate(method: .symmetricDifferenceQuotient(.epsilonSquareRoot))
+/// ```
+///
+/// All of `Endo`'s API surface — `init(_:)`, `callAsFunction(_:)`, `Semigroup`
+/// composition with `<>`, `mconcat`, etc. — is available, plus the calculus-specific
+/// `differentiate(method:)`, `point(at:)`, `invert()` extensions defined in
+/// ``DerivativeFunction``.
+public typealias Fn<NumericType> = Endo<NumericType> where NumericType: ℝ

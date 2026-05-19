@@ -1,6 +1,6 @@
+import CoreFP
 import Foundation
 import Math
-import Morphisms
 import RealNumber
 
 public enum DerivativeFunction<T: ℝ> {
@@ -120,14 +120,12 @@ extension DerivativeFunction {
     }
 }
 
-extension Fn where Input == Output, T: ℝ {
-    public func differentiate(method: DerivativeFunction<T>.Method) -> DerivativeFunction<T> {
+extension Endo where A: ℝ {
+    public func differentiate(method: DerivativeFunction<A>.Method) -> DerivativeFunction<A> {
         DerivativeFunction.firstDerivative(function: self, method: method)
     }
-}
 
-extension Fn where Input == Output, T: ℝ {
-    public func point(at x: T) -> BidimensionalPoint<T>? {
+    public func point(at x: A) -> BidimensionalPoint<A>? {
         let y = self(x)
         guard !x.isNaN, !y.isNaN else { return nil }
         return BidimensionalPoint(x: x, y: y)
