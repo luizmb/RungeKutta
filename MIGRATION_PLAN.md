@@ -1,6 +1,48 @@
 # RungeKutta → FP migration plan & next-steps notes
 
-Snapshot: 2026-05-16. RungeKutta has 11 source modules; FP (`~/code/FP`) now supersedes the FP/category-theory subset. Goal: strip RungeKutta down to math + calculus + RK, pointing at FP for the plumbing.
+Snapshot: 2026-05-19. RungeKutta has 11 source modules; FP (`~/code/FP`) now supersedes the FP/category-theory subset. Goal: strip RungeKutta down to math + calculus + RK, pointing at FP for the plumbing.
+
+## Status
+
+- ✅ **Phase B (2026-05-18)** — fixed the `rk4` double-add bug; added `VectorState` protocol + vector-state `rk4` overload; replaced the empty `RungeKuttaTests` stub with 11 real scalar + vector tests.
+- ✅ **Math + algorithm namespaces (2026-05-19)** — added `Matrix<T: ℝ>` value type with `+`, `*`, scalar `*`, `apply(to:)`, `with(row:column:value:)`, `squared(times:)`; the `⋅` (DOT OPERATOR) operator wraps `*` / `apply(to:)`; extracted `SimpsonWeightedAverage` (used by both scalar and vector RK4), `Taylor`, and `Birchall` algorithm namespaces under `Calculus/`. Renamed nothing in the public RK4 API.
+- ⏳ **FP-duplicate removal** — pending. See the "Already in FP" section below; needs to actually be deleted now that FP is mature. Tracking explicitly:
+   - Delete `Sources/Monoid/`, `Sources/Morphisms/`, `Sources/FoundationCategoryTheory/`, `Sources/FoundationCategoryTheoryOperators/`, `Sources/CompositionOperators/`.
+   - Add FP (`https://github.com/luizmb/FP`) as a SwiftPM dependency in `Package.swift`.
+   - Update remaining targets (`Calculus`, `RungeKutta`, `Math`, `MathOperators`, `SwiftMath`) to import `CoreFP` / `CoreFPOperators` / `DataStructure` where they previously imported the removed local modules.
+   - Inside `Sources/Calculus/Fn.swift`, replace `Fn<T> = Endomorphism<T>` with `Fn<T> = Endo<T>` (or just inline `Endo<T>`) and delete the file if it adds no value.
+   - Bump the package name from `SwiftMath` (yes, the manifest already uses `SwiftMath`) to something honest like `RungeKutta` — or leave the rename for the broader renaming pass (see below).
+- ⏳ **Library rename** — eventually rename the whole package (something broader than `RungeKutta`/`SwiftMath` — the namespaces now include `Math.Matrix`, `Calculus.Birchall`, `Calculus.Taylor`, `Calculus.SimpsonWeightedAverage`, plus `RungeKutta4`). Open question.
+
+## New namespace structure (post-2026-05-19)
+
+```
+Math/
+  Matrix<Scalar: ℝ>            // row-major matrix + +, *, scalar *, apply(to:), with, squared
+  VectorState                  // protocol over an ℝ scalar; built-in conformances for [T] and concrete ℝs
+  BidimensionalPoint           // existing
+  Comparable+/-/Strideable+    // existing
+  Log, Numeric+, Symbols       // existing
+
+MathOperators/
+  Matrix+Operators             // ⋅ (DOT OPERATOR) for matrix-matrix, scalar-matrix, matrix-vector
+  ≅, ±, +/-, √, ^^             // existing
+
+Calculus/
+  SimpsonWeightedAverage       // (v1 + 2v2 + 2v3 + v4) / 6 — used by RK4
+  Taylor                       // matrix Taylor series of exp
+  Birchall                     // scaling-and-squaring matrix exponential
+  Derivative, Fibonacci, Fn    // existing
+
+RungeKutta/
+  RungeKutta4                  // scalar + vector overloads; both delegate to SimpsonWeightedAverage
+```
+
+Algorithm-named static functions live under `enum AlgorithmName { static func … }`. The naming convention is: if a sub-step has a known mathematical / historical name, give it its own namespace (`SimpsonWeightedAverage`, `Taylor`, `Birchall`); otherwise leave as a private helper inside the parent algorithm.
+
+Inline docs are written for non-mathematicians: explain the concept, link to the canonical text (Butcher, Moler–Van Loan, Birchall 1986, Strang, Wikipedia), and walk through the algorithm step by step.
+
+Custom mathematical symbols are welcome (currently `⋅` for multiplication, `√`/`^^` already shipping). The convention is *named function first, operator as ergonomic alias second* — so symbol-shy users always have the long form available.
 
 ## Already in FP — delete from RungeKutta
 

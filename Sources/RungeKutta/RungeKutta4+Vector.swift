@@ -1,24 +1,30 @@
+import Calculus
+import Math
 import RealNumber
 
 extension RungeKutta4 {
-    /// Vector-state RK4. The derivative depends on the whole state vector at each substep,
-    /// which is required for coupled ODE systems like multi-compartment biokinetic models.
+    /// Vector-state RK4. The derivative depends on the whole state vector at each
+    /// substep, which is required for coupled ODE systems — multi-compartment
+    /// biokinetic models, harmonic oscillators, predator–prey, anything where
+    /// `dyᵢ/dt` depends on more than just `yᵢ`.
     ///
-    /// Returns a step function `(t, y, Δt) → Δy`. Like the scalar overload, the returned
-    /// Δ is a *pure delta* — callers add `y + Δy` to obtain the next state.
+    /// Returns a step function `(t, y, Δt) → Δy`. The Δ is a *pure delta* — callers
+    /// add `y + Δy` (e.g. via ``calculateNextState(Δt:stepCalculator:)``).
+    ///
+    /// Generic over any ``VectorState`` — built-in conformances cover `Array<T>` for
+    /// `T: ℝ` (the typical biokinetic case) and the concrete real-number types
+    /// themselves (so the scalar overload above could equivalently be implemented
+    /// in terms of this one — kept separate for ergonomic `BidimensionalPoint` use).
     public static func rk4<State: VectorState>(
         _ fn: @escaping (State.Scalar, State) -> State
     ) -> (/* t */ State.Scalar, /* y */ State, /* Δt */ State.Scalar) -> /* Δy */ State {
         { t, y, Δt in
-            let two: State.Scalar = 2
-            let six: State.Scalar = 6
-            let half = Δt / two
+            let half: State.Scalar = Δt / 2
             let k1 = fn(t,        y)
             let k2 = fn(t + half, y + half * k1)
             let k3 = fn(t + half, y + half * k2)
             let k4 = fn(t + Δt,   y +   Δt * k3)
-            let weighted = k1 + two * k2 + two * k3 + k4
-            return (Δt / six) * weighted
+            return SimpsonWeightedAverage.calculate(Δt * k1, Δt * k2, Δt * k3, Δt * k4)
         }
     }
 
