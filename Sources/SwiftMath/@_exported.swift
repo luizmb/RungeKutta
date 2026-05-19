@@ -1,10 +1,5 @@
 @_exported import Calculus
-@_exported import CompositionOperators
-@_exported import FoundationCategoryTheory
-@_exported import FoundationCategoryTheoryOperators
 @_exported import Math
 @_exported import MathOperators
-@_exported import Monoid
-@_exported import Morphisms
 @_exported import RealNumber
 @_exported import RungeKutta

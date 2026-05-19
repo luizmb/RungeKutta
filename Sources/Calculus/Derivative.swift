@@ -56,15 +56,16 @@ public enum DerivativeFunction<T: ℝ> {
             case let .fivePoint(stepCalculator):
                 Fn { x in
                     let h = stepCalculator.calculate(x: x, fn: fn)
+                    // Five-point central-difference stencil:
+                    //   f'(x) ≈ [ −f(x + 2h) + 8·f(x + h) − 8·f(x − h) + f(x − 2h) ] / (12h)
+                    // Derived by combining Taylor expansions to cancel the O(h²) and O(h³) error
+                    // terms; the remaining error is O(h⁴). See e.g.
+                    // https://en.wikipedia.org/wiki/Five-point_stencil
                     let firstPoint = -fn(x + 2*h)
                     let secondPoint = 8*fn(x + h)
                     let thirdPoint = -8*fn(x - h)
                     let fourthPoint = fn(x - 2*h)
-                    let leftGroup = (firstPoint + secondPoint + thirdPoint + fourthPoint) / (12 * h)
-                    let c1 = x - 2 * h
-                    let c2 = x + 2 * h
-                    let fifthPoint = (h.raisedToThePower(of: 4) / 30) * fn(5) * c2
-                    return leftGroup + fifthPoint
+                    return (firstPoint + secondPoint + thirdPoint + fourthPoint) / (12 * h)
                 }
             case let .custom(dx):
                 dx(fn)
@@ -95,22 +96,48 @@ public enum DerivativeFunction<T: ℝ> {
     }
 
     public func perpendicular() -> Fn<T> {
-        slopeFunction
-            .invert()
+        slopeFunction.perpendicularSlope()
     }
 
     public func callAsFunction(x: T) -> T {
         slopeFunction(x)
     }
 
+    /// True if `fn` looks differentiable at `x`: the backward and forward difference
+    /// quotients at step `h` agree to within `h`. Catches corners (e.g. `|x|` at 0,
+    /// where left slope is −1 and right slope is +1) and jumps in the derivative.
+    ///
+    /// **Known limitation:** does *not* catch vertical-tangent points like
+    /// `x^(1/3)` at 0, where the function is not differentiable but the left and right
+    /// derivatives agree (both are +∞). Detecting those would require checking the
+    /// *magnitude* of the slope against some threshold, which depends on the use case.
+    /// True if `fn` looks differentiable at `x`: the backward and forward difference
+    /// quotients at step `h` agree to within `√h`.
+    ///
+    /// The `√h` (not `h`) tolerance matters: even perfectly smooth functions have
+    /// finite-difference truncation error of order `O(h)` from one-sided differences,
+    /// so a `< h` threshold would reject everything. Corners (`|x|` at 0) have a
+    /// **constant** slope jump independent of `h` — they fail the `√h` threshold
+    /// cleanly. Vertical-tangent points (`x^(1/3)` at 0) also fail because Swift's
+    /// `pow(-h, 1/3)` returns `NaN`, which makes `fromLeft` `NaN`, and `NaN < anything`
+    /// is `false`.
     public func isDifferentiable(at x: T, h: T) -> Bool {
-        // TODO: `{ x in pow(x, (1/3)) }, point: 0, expectedIsDifferentiable: false`
-        //       This should be false, but it's currently returning true. If the point creates a vertical tangent
-        //       the function is not differentiable, but our algorithm currently can't detect that.
-        let fromLeft = self(x: x)
-        let fromRight = self(x: x)
+        let fn = underlyingFunction
+        let fromLeft = (fn(x) - fn(x - h)) / h
+        let fromRight = (fn(x + h) - fn(x)) / h
+        return abs(fromLeft - fromRight) < h.squareRoot()
+    }
 
-        return abs(fromLeft - fromRight) < h
+    /// The function being differentiated. For a chain of `.higherOrder` cases this is
+    /// the previous derivative (one rung down the chain), reaching the original
+    /// `.firstDerivative` function at the bottom.
+    public var underlyingFunction: Fn<T> {
+        switch self {
+        case let .firstDerivative(function, _):
+            function
+        case let .higherOrder(derivative):
+            derivative.slopeFunction
+        }
     }
 }
 
@@ -131,7 +158,13 @@ extension Endo where A: ℝ {
         return BidimensionalPoint(x: x, y: y)
     }
 
-    public func invert() -> Self {
+    /// Returns the perpendicular-slope function: at every point, the negative
+    /// reciprocal of `self(x)`. If `self` is a tangent slope, this is the slope of
+    /// the line perpendicular to it.
+    ///
+    /// (This used to be named `invert()`, which was misleading — it computes the
+    /// negative reciprocal, not the function inverse.)
+    public func perpendicularSlope() -> Self {
         Self { x in
             -1 / self(x)
         }

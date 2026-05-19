@@ -97,15 +97,34 @@ deleted years ago, and hadn't compiled since. Removed entirely. If interactive
 exploration is wanted later, the tests already cover the algorithms end-to-end;
 a new playground (or DocC tutorial) can be written against the current API.
 
-## DerivativeFunction — three real issues
+## ~~DerivativeFunction — three real issues~~ — fixed 2026-05-19
 
 [Sources/Calculus/Derivative.swift](Sources/Calculus/Derivative.swift):
 
-- **`fivePoint` is broken** (line 66): `let fifthPoint = (h.raisedToThePower(of: 4) / 30) * fn(5) * c2`. `fn(5)` is "evaluate the function at literal 5", not the 4th-derivative truncation term. The whole `fifthPoint` addition is wrong — the canonical 5-point central difference is just `(-f(x+2h) + 8f(x+h) - 8f(x-h) + f(x-2h)) / (12h)` with no error-term added to the value. Remove the `fifthPoint` term.
-- **`isDifferentiable(at:h:)` always returns true near zero** (line 110-113): both `fromLeft` and `fromRight` are bound to `self(x: x)` — the same exact expression. It needs to evaluate the *underlying* `Fn` at `x-h` and `x+h` and compare their slopes (or the function values), not the derivative twice at the same point. The TODO about vertical-tangent detection is downstream of this.
-- **`differentiate()` higher-order is structurally suspect**: `slopeFunction` for `.higherOrder(derivative)` re-applies the same `Method` to the *already-derived* `slopeFunction`. Mathematically that's `f'' ≈ D[D[f]]`, which works in theory but compounds the step-size error fast (O(h) for forward, O(h²) for central — squared once you nest). It's fine if you only want a quick `f''`, but doesn't match how the white papers would describe higher-order central differences. Worth deciding whether to keep this convenience or expose explicit higher-order coefficients.
+- ✅ **`fivePoint`**: removed the bogus `fifthPoint` truncation term (which was
+  `(h⁴/30)·fn(5)·c₂` — `fn(5)` evaluated the function at literal `5`, not a fourth
+  derivative). The canonical 5-point central difference is now what's used.
+- ✅ **`isDifferentiable(at:h:)`**: now evaluates the underlying `Fn` at `x-h`,
+  `x`, `x+h` and compares one-sided derivative quotients. The tolerance is `√h`
+  rather than `h` (smooth functions have `O(h)` truncation error; corners have a
+  constant slope jump). Vertical-tangent points like `x^(1/3)` at 0 are also
+  detected because Swift's `pow(-h, 1/3)` returns `NaN`, which falls out of the
+  `<` comparison as `false`.
+- ✅ **`invert()` renamed to `perpendicularSlope()`** (and `perpendicular()`
+  updated to call the new name). The old name implied function inversion;
+  it actually returns `-1 / self(x)`.
 
-Naming nit: `invert()` on [Sources/Calculus/Derivative.swift:136](Sources/Calculus/Derivative.swift) returns `-1/self(x)` — that's the *perpendicular slope*, not function inversion. Rename to `perpendicularSlope()` / fold into the existing `perpendicular()`.
+Still open (design choice, not a bug): **`differentiate()` higher-order**
+re-applies the same `Method` to the already-derived slope function. Works in
+theory; compounds step-size error fast. Worth deciding whether to keep this
+convenience or expose explicit higher-order central-difference coefficients
+(would need a new `Method` case).
+
+Tests: `testDerivativeNormalPerpendicular` was missing a `.perpendicular()` call
+on its slope (the expected values were perpendicular slopes, but the test
+computed tangent slopes) — fixed. Removed two test scenarios (`pow(x, 1/3)` at
+0, `abs(x)` at 0) that asserted `expectedSlope: 0` at non-differentiable points,
+which is mathematically wrong.
 
 ## Fibonacci — precision tests already document Quick degrades fast
 

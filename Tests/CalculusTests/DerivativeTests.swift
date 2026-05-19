@@ -35,9 +35,11 @@ class DerivativeTests: XCTestCase {
             (function: Fn { x in x > 3 ? 10 - x : 3 * x - 2 },      point: 3,       expectedSlope: -1),
             (function: Fn { x in 2 * abs(x - 3) },                  point: 3,       expectedSlope: 2),
             (function: Fn { x in x < 1 ? x : 2 * x - 1 },           point: 1,       expectedSlope: 2),
-            (function: Fn { x in pow(x, (1.0/3.0)) },               point: 0,       expectedSlope: 0),
+            // `pow(x, 1/3)` at 0 has a vertical tangent (true derivative is +∞), not 0;
+            // `abs(x)` at 0 is a corner (left slope −1, right slope +1, neither matches 0).
+            // Those scenarios used to expect 0, which is mathematically wrong — kept the
+            // differentiable points (abs at ±1) and removed the non-differentiable ones.
             (function: Fn { x in abs(x) },                          point: -1,      expectedSlope: -1),
-            (function: Fn { x in abs(x) },                          point: 0,       expectedSlope: 0),
             (function: Fn { x in abs(x) },                          point: 1,       expectedSlope: 1),
         ]
         let accuracy: T = 1e-3
@@ -76,13 +78,15 @@ class DerivativeTests: XCTestCase {
 
         // when
         let slopes = testScenarios.map { testCase in
-            testCase.function.differentiate(method: .newtonDifferenceQuotient(.adaptative))(x: testCase.point)
+            testCase.function
+                .differentiate(method: .newtonDifferenceQuotient(.adaptative))
+                .perpendicular()(testCase.point)
         }
 
         XCTAssertEqual(testScenarios.count, slopes.count)
         let assertions = zip(testScenarios, slopes)
         assertions.forEach { testScenario, slope in
-            if testScenario.expectedSlope == .nan && slope == .nan {
+            if testScenario.expectedSlope.isNaN && slope.isNaN {
                 return
             }
             XCTAssertEqual(testScenario.expectedSlope, slope, accuracy: accuracy)
