@@ -27,6 +27,8 @@ let shared: [Target] = [
 let package = Package(
     name: "SwiftMath",
     products: [
+        .library(name: "Math", targets: ["Math", "MathOperators"]),
+        .library(name: "MathNoOperators", targets: ["Math"]),
         .library(name: "Calculus", targets: ["Calculus", "MathOperators", "CompositionOperators"]),
         .library(name: "CalculusNoOperators", targets: ["Calculus"]),
         .library(name: "FoundationCategoryTheory", targets: ["FoundationCategoryTheory", "FoundationCategoryTheoryOperators"]),
