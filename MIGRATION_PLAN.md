@@ -5,7 +5,8 @@ Snapshot: 2026-05-19. RungeKutta has 11 source modules; FP (`~/code/FP`) now sup
 ## Status
 
 - ✅ **Phase B (2026-05-18)** — fixed the `rk4` double-add bug; added `VectorState` protocol + vector-state `rk4` overload; replaced the empty `RungeKuttaTests` stub with 11 real scalar + vector tests.
-- ✅ **Math + algorithm namespaces (2026-05-19)** — added `Matrix<T: ℝ>` value type with `+`, `*`, scalar `*`, `apply(to:)`, `with(row:column:value:)`, `squared(times:)`; the `⋅` (DOT OPERATOR) operator wraps `*` / `apply(to:)`; extracted `SimpsonWeightedAverage` (used by both scalar and vector RK4), `Taylor`, and `Birchall` algorithm namespaces under `Calculus/`. Renamed nothing in the public RK4 API.
+- ✅ **Math + algorithm namespaces (2026-05-19)** — added `Matrix<T: ℝ>` value type with `+`, `*`, scalar `*`, `apply(to:)`, `with(row:column:value:)`, `squared(times:)`; the `⋅` (DOT OPERATOR) operator wraps `*` / `apply(to:)`; extracted `SimpsonWeightedAverage` (used by both scalar and vector RK4) and `Taylor` algorithm namespaces under `Calculus/`. Added `RungeKutta4.trajectory(from:derivative:step:through:)` for one-shot integration. Renamed nothing in the public RK4 API.
+- ✅ **Birchall lives in MultiCompartmentModel, not here** — Birchall's 1986 algorithm is the dosimetry-specific scaling-and-squaring matrix exponential. The generic building blocks (`Math.Matrix`, `Math.Matrix.squared(times:)`, `Calculus.Taylor.exponential`) stay in this library; the dosimetry-flavored composition lives in `MultiCompartmentModel/Sources/MultiCompartmentModel/Birchall.swift`. If/when a non-Birchall scaling-and-squaring variant (Padé, Moler & Van Loan algorithm 11, etc.) is needed in pure numerical linear algebra, it lands here under its own algorithm namespace.
 - ⏳ **FP-duplicate removal** — pending. See the "Already in FP" section below; needs to actually be deleted now that FP is mature. Tracking explicitly:
    - Delete `Sources/Monoid/`, `Sources/Morphisms/`, `Sources/FoundationCategoryTheory/`, `Sources/FoundationCategoryTheoryOperators/`, `Sources/CompositionOperators/`.
    - Add FP (`https://github.com/luizmb/FP`) as a SwiftPM dependency in `Package.swift`.
@@ -30,13 +31,19 @@ MathOperators/
 
 Calculus/
   SimpsonWeightedAverage       // (v1 + 2v2 + 2v3 + v4) / 6 — used by RK4
-  Taylor                       // matrix Taylor series of exp
-  Birchall                     // scaling-and-squaring matrix exponential
+  Taylor                       // matrix Taylor series of exp (generic building block)
   Derivative, Fibonacci, Fn    // existing
 
 RungeKutta/
   RungeKutta4                  // scalar + vector overloads; both delegate to SimpsonWeightedAverage
+  RungeKutta4.trajectory(…)    // one-shot integrator returning [(time, state)]
 ```
+
+The Birchall algorithm namespace lives in the dosimetry consumer
+(`MultiCompartmentModel/Sources/MultiCompartmentModel/Birchall.swift`) because the
+algorithm was published specifically for compartmental dosimetry models. Generic
+scaling-and-squaring matrix exponentials, when needed, would live here under their
+own named namespace.
 
 Algorithm-named static functions live under `enum AlgorithmName { static func … }`. The naming convention is: if a sub-step has a known mathematical / historical name, give it its own namespace (`SimpsonWeightedAverage`, `Taylor`, `Birchall`); otherwise leave as a private helper inside the parent algorithm.
 
