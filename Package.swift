@@ -3,7 +3,13 @@
 import PackageDescription
 
 let customOperator: [Target] = [
-    .target(name: "MathOperators", dependencies: ["Math"])
+    .target(
+        name: "MathOperators",
+        dependencies: [
+            "Math",
+            .product(name: "CoreFPOperators", package: "FP")
+        ]
+    )
 ]
 
 let calculus: [Target] = [
@@ -15,7 +21,13 @@ let calculus: [Target] = [
             .product(name: "CoreFP", package: "FP")
         ]
     ),
-    .target(name: "Math", dependencies: ["RealNumber"]),
+    .target(
+        name: "Math",
+        dependencies: [
+            "RealNumber",
+            .product(name: "CoreFP", package: "FP")
+        ]
+    ),
     .target(name: "RealNumber")
 ]
 

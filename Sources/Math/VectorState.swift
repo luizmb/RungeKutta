@@ -23,7 +23,7 @@ extension Array: VectorState where Element: ℝ {
     public typealias Scalar = Element
 
     public static func + (lhs: Array<Element>, rhs: Array<Element>) -> Array<Element> {
-        zip(lhs, rhs).map(+)
+        Swift.zip(lhs, rhs).map(+)
     }
 
     public static func * (scalar: Element, state: Array<Element>) -> Array<Element> {

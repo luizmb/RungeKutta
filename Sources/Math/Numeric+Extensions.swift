@@ -1,3 +1,4 @@
+import CoreFP
 import Foundation
 
 // MARK: - Interpolation & Progress for Floating Points

@@ -60,13 +60,16 @@ Whole modules are obsolete vs. what FP now ships:
 - **`Sources/FoundationCategoryTheoryOperators/`** — `<*>` / `>>=` / `>=>` per type. Present in FP under a documented precedence ladder (note: FP uses `>>-` not `>>=` to avoid the stdlib bitwise clash). Drop module.
 - **`Sources/CompositionOperators/`** — `^` (KeyPath/closure→`Function`), `|>`, `<*>`, `>>=`, `>=>`, `>>>`, `<<<`, `•`, and their precedence groups. All present in FP's `CoreFPOperators`. FP's `^` lifts KeyPath into `Lens` (the better design). Drop module.
 
-## Worth lifting into FP (small, generic)
+## ~~Worth lifting into FP (small, generic)~~ — already in FP; deleted from RK 2026-05-19
 
-Three items are not yet in FP and are general-purpose, not math:
+All three items are already shipping in FP and were duplicated here:
 
-1. `Comparable.clamped(to:)` and `Comparable.within(_:)` — [Sources/Math/Comparable+Extensions.swift](Sources/Math/Comparable+Extensions.swift). Suggest landing as `CoreFP/Utilities/Comparable+Clamp.swift`.
-2. `Array.cartesian(_:_:…)` n-ary tuple version — [Sources/Math/Collection+Extensions.swift](Sources/Math/Collection+Extensions.swift). FP's list-applicative `liftA2` covers two-array element-cartesian; the tuple-returning n-ary form is distinct and worth keeping. Rewrite with variadic packs in `CoreFP/Array/`.
-3. `Strideable.plusMinus(_:)` — backs the `±`/`+/-` operators which FP already *declares* in `Operators.swift` but with only `SignedNumeric` overloads (`symmetricRange`). Either add a `Strideable` overload or reconcile to one definition.
+- ✅ `Comparable.clamped(to:)` / `within(_:)` — FP's `CoreFP/Utilities/Comparable+Clamp.swift`. RK's `Sources/Math/Comparable+Extensions.swift` deleted; `Sources/Math/Numeric+Extensions.swift` imports `CoreFP` now.
+- ✅ `Array.cartesian(_:_:…)` 2/3/4-ary tuple version — FP's `CoreFP/Array/Array+Cartesian.swift`. RK's `Sources/Math/Collection+Extensions.swift` deleted.
+- ✅ `Strideable.plusMinus(_:)` and the `±` / `+/-` operators — FP ships these directly on `Strideable` in `CoreFPOperators/Utilities/NumericOperators.swift` (the named-function form is `symmetricRange` in `CoreFP/Utilities/NumericOperations.swift`). RK's `Sources/Math/Strideable+Extensions.swift` and `Sources/MathOperators/PlusMinusRange.swift` deleted.
+- ✅ `≅` (approximate equality, `base.within(range)`) — FP declares the operator in `CoreFPOperators/Utilities/Operators.swift`. RK's `Sources/MathOperators/ApproximateEquality.swift` deleted.
+
+`Math` target now depends on `CoreFP`; `MathOperators` target now depends on `CoreFPOperators`. Consumers `import CoreFP` (transitively via `Math`) to get `clamped`/`within`/`cartesian`/`symmetricRange`, and `import CoreFPOperators` (transitively via `MathOperators`) for `±`/`+/-`/`≅`.
 
 ## Stays in RungeKutta (math/calculus)
 
