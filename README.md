@@ -63,7 +63,7 @@ The library targets **students, scientific Swift developers, and educators** —
 Swift Package Manager. In your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/luizmb/SwiftCalx.git", from: "2.0.0")
+.package(url: "https://github.com/luizmb/SwiftCalx.git", from: "0.1.0")
 ```
 
 Then pick a product for each target that needs it:
@@ -724,8 +724,8 @@ Swift 5.10 toolchain or later. Swift 6 strict concurrency mode is supported (the
 
 See [`MIGRATION_PLAN.md`](MIGRATION_PLAN.md) for the full snapshot. Headline items:
 
-- **Tag `2.0.0`** after this rename PR merges (the package identifier change is a breaking change for consumers).
-- **Bump consumers** — MCM gets `SolverMethod.rungeKutta45(tolerance:)` and the new package URL.
+- **Tag `0.1.0`** — first SwiftCalx release.
+- **Bump consumers** — MCM gets `SolverMethod.rungeKutta45(tolerance:)` and the SwiftCalx package URL.
 - **Split into separate repos** (eventually) — `Math`, `MathOperators`, `Calculus`, `RungeKutta`, `SwiftCalx` (umbrella) as independent packages, so consumers pull only what they need.
 - **More ODE solvers** when needed — Adams-Bashforth-Moulton (predictor-corrector), BDF (for stiff systems), implicit RK5 (Radau IIA), Rosenbrock, dense-output interpolation for `RungeKutta45`.
 - **Quadrature** — Simpson, Gauss-Legendre, Romberg, adaptive Gauss-Kronrod.
