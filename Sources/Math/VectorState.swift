@@ -13,7 +13,7 @@ import RealNumber
 ///   is its own one-dimensional vector space with `Scalar == Self`. Lets the *same*
 ///   algorithm namespaces (e.g. ``SimpsonWeightedAverage``) drive both scalar and
 ///   vector solvers without writing the implementation twice.
-public protocol VectorState {
+public protocol VectorState: Sendable {
     associatedtype Scalar: ℝ
     static func + (lhs: Self, rhs: Self) -> Self
     static func * (scalar: Scalar, state: Self) -> Self

@@ -11,7 +11,7 @@ import RealNumber
 /// All the algorithmic variety (which stencil, what step strategy, what order)
 /// lives in ``DerivativeMethod``, which is open-extensible thanks to the witness
 /// pattern.
-public struct DerivativeFunction<Scalar: ℝ> {
+public struct DerivativeFunction<Scalar: ℝ>: Sendable {
     /// The function being differentiated. Differentiating again starts from this
     /// function's *slope* (via composition), not the original.
     public let underlyingFunction: Fn<Scalar>

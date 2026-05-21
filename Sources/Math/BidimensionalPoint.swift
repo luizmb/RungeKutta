@@ -1,7 +1,7 @@
 import Foundation
 import RealNumber
 
-public struct BidimensionalPoint<T: ℝ> {
+public struct BidimensionalPoint<T: ℝ>: Sendable {
     public let x: T
     public let y: T
 

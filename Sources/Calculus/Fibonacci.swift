@@ -2,8 +2,8 @@ import CoreFP
 import Foundation
 import RealNumber
 
-public struct Fibonacci { 
-    public enum Method {
+public struct Fibonacci: Sendable {
+    public enum Method: Sendable {
         case precise, quick, balanced
     }
 

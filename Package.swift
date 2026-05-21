@@ -48,7 +48,7 @@ let package = Package(
         .library(name: "SwiftMath", targets: ["SwiftMath"])
     ],
     dependencies: [
-        .package(url: "https://github.com/luizmb/FP.git", from: "1.7.0")
+        .package(url: "https://github.com/luizmb/FP.git", from: "1.8.1")
     ],
     targets: customOperator + calculus + [
         .target(name: "SwiftMath", dependencies: ["RungeKutta", "MathOperators"]),
