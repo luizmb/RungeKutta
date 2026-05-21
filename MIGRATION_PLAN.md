@@ -63,11 +63,11 @@ Conventions:
 
 ## ⏳ Pending
 
-### Tag `2.0.0`
-After the rename PR merges, tag `2.0.0` (the package identifier change is a breaking change for consumers — they need to update both the URL and the `from:` version).
+### Tag `0.1.0`
+First SwiftCalx release. The repository was renamed from `RungeKutta` to `SwiftCalx` and the version line was reset — pre-rename tags lived on the old `RungeKutta` repo and have no place in the SwiftCalx version history.
 
 ### Bump MCM (consumer)
-`MultiCompartmentModel` is the only known consumer right now. Replace its `.package(url: "https://github.com/luizmb/RungeKutta.git", from: "1.8.x")` with `.package(url: "https://github.com/luizmb/SwiftCalx.git", from: "2.0.0")` and add a `SolverMethod.rungeKutta45(tolerance:)` case alongside `.birchall` / `.rungeKutta4(stepSize:)`.
+`MultiCompartmentModel` is the only known consumer right now. Replace its `.package(url: "https://github.com/luizmb/RungeKutta.git", from: "1.8.x")` with `.package(url: "https://github.com/luizmb/SwiftCalx.git", from: "0.1.0")` and add a `SolverMethod.rungeKutta45(tolerance:)` case alongside `.birchall` / `.rungeKutta4(stepSize:)`.
 
 ### Break the package down
 Consider splitting into separate **repositories** along module lines:
