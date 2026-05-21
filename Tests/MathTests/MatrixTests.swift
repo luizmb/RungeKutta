@@ -95,8 +95,8 @@ final class MatrixTests: XCTestCase {
         let product = M * N
         XCTAssertEqual(product.rows, 2)
         XCTAssertEqual(product.columns, 2)
-        XCTAssertEqual(product[0, 0], Double(1 * 7 + 2 * 9 + 3 * 11))
-        XCTAssertEqual(product[1, 1], Double(4 * 8 + 5 * 10 + 6 * 12))
+        XCTAssertEqual(product[0, 0], 58.0)  // 1·7 + 2·9 + 3·11
+        XCTAssertEqual(product[1, 1], 154.0) // 4·8 + 5·10 + 6·12
     }
 
     func testWithReplacesCellWithoutMutatingOriginal() {
