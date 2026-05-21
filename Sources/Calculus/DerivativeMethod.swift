@@ -17,23 +17,31 @@ import RealNumber
 /// evaluations, weighted sum, division by a power of `h`) happens when the
 /// returned `Fn` is called with a concrete `x`.
 ///
-/// ## Namespaces
+/// ## Namespaces and standalone factories
 ///
-/// Standard methods live under five families (each is a `public enum` nested in
-/// `DerivativeMethod`):
+/// Methods with multiple variants live under nested `public enum` namespaces so
+/// the variants surface together in code completion:
 ///
 /// - ``CentralStencil`` — symmetric stencils centred on `x` (most accurate per
-///   evaluation; needs `f` defined on both sides of `x`).
+///   evaluation; needs `f` defined on both sides of `x`). Variants: `threePoint`,
+///   `fivePoint`.
 /// - ``ForwardStencil`` — one-sided stencils using `x, x+h, x+2h, …`. Use near a
-///   left boundary of the domain.
+///   left boundary of the domain. Variants: `twoPoint`, `threePoint`.
 /// - ``BackwardStencil`` — one-sided stencils using `x, x-h, x-2h, …`. Use near a
-///   right boundary.
-/// - ``Richardson`` — accuracy-boosting combinators that take an existing method
-///   and produce a higher-order one by extrapolation.
+///   right boundary. Variants: `twoPoint`, `threePoint`.
 /// - ``Compose`` — combinators that build new methods from existing ones
 ///   (e.g. ``Compose/repeated(_:times:)`` for naïve higher-order chains).
 ///
-/// Plus ``custom(order:deriving:)`` as a raw escape hatch.
+/// Standalone author-named factories (each is a single method, so it lives flat
+/// alongside the namespaces above for one-tap discoverability):
+///
+/// - ``richardsonExtrapolation(coarse:fine:leadingOrder:)`` — Richardson 1911:
+///   combine two evaluations at `h` and `h/2` to cancel the leading error term.
+/// - ``fornbergCentralStencil(points:order:step:)`` — Fornberg 1988: generate
+///   optimal central-stencil weights for any (points, order) combo at construction
+///   time. The escape hatch when none of the hardcoded stencils fits.
+/// - ``custom(order:deriving:)`` — raw witness escape hatch when you have a
+///   completely custom method in mind.
 ///
 /// References:
 /// - Fornberg, B. (1988). *Generation of finite difference formulas on arbitrarily
@@ -245,7 +253,7 @@ extension DerivativeMethod {
 
 // MARK: - Richardson extrapolation (accuracy-boosting combinator)
 
-extension DerivativeMethod {
+extension DerivativeMethod where Scalar == Double {
     /// Richardson extrapolation — turns a method of error `O(h^p)` into one of
     /// error `O(h^(p+q))` by combining two evaluations at different step sizes.
     ///
@@ -261,24 +269,19 @@ extension DerivativeMethod {
     /// their derivings. No magic; the caller can pair stencils of different
     /// families (e.g. coarse 3-point + fine 5-point) for custom extrapolations.
     ///
+    /// The `leadingOrder` is the `p` in the methods' `O(h^p)` error term — `2` for
+    /// central differences, `1` for one-sided. Both methods must have the same
+    /// derivative order; the result's order matches them.
+    ///
+    /// Restricted to `Scalar == Double` so the `2^p` weighting can use stdlib
+    /// `pow` without ℝ-generic integer-literal gymnastics. For non-Double scalars,
+    /// build the combination by hand or extend this method.
+    ///
     /// References:
     /// - Richardson, L.F. (1911). *The approximate arithmetical solution by
     ///   finite differences of physical problems …*. Philosophical Transactions
     ///   of the Royal Society A 210: 307–357.
     /// - https://en.wikipedia.org/wiki/Richardson_extrapolation
-    public enum Richardson { }
-}
-
-extension DerivativeMethod where Scalar == Double {
-    /// Apply Richardson extrapolation given a `coarse` method (step `h`) and a
-    /// `fine` method (step `h/2`). The `leadingOrder` is the `p` in the methods'
-    /// `O(h^p)` error term — `2` for central differences, `1` for one-sided.
-    /// Both methods must have the same derivative order; the result's order
-    /// matches them.
-    ///
-    /// Restricted to `Scalar == Double` so the `2^p` weighting can use stdlib
-    /// `pow` without ℝ-generic integer-literal gymnastics. For non-Double scalars,
-    /// build the combination by hand or extend this method.
     public static func richardsonExtrapolation(
         coarse: DerivativeMethod<Double>,
         fine: DerivativeMethod<Double>,
@@ -337,7 +340,7 @@ extension DerivativeMethod where Scalar == Double {
     /// rational arithmetic that's painful to express generically over `ℝ` types
     /// without an `Int → Scalar` bridge. If you have a non-`Double` use case,
     /// reach out — generalising is a code change, not a math change.
-    public static func centralStencilCustom(
+    public static func fornbergCentralStencil(
         points: Int,
         order: Int,
         step: StepCalculator<Double>
