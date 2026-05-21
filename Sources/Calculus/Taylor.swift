@@ -54,8 +54,7 @@ public enum Taylor {
         var term = identity
         for r in 1 ... maxIterations {
             term = (1 / Double(r)) * (term * A)
-            // swiftlint:disable:next shorthand_operator
-            sum = sum + term
+            sum += term
             if converged(term: term, sum: sum, tolerance: tolerance) { return sum }
         }
         return sum

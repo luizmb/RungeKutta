@@ -1,0 +1,16 @@
+version: 1
+builder:
+  configs:
+    - platform: macosSpm
+      documentation_targets:
+        - SwiftCalx
+        - RungeKutta
+        - Calculus
+        - Math
+        - MathOperators
+        - RealNumber
+    - platform: ios
+    - platform: tvos
+    - platform: watchos
+    - platform: visionos
+    - platform: linux

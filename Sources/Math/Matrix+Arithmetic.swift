@@ -12,6 +12,27 @@ extension Matrix {
         )
     }
 
+    /// In-place elementwise sum. Equivalent to `lhs = lhs + rhs`.
+    public static func += (lhs: inout Matrix, rhs: Matrix) {
+        lhs = lhs + rhs
+    }
+
+    /// Elementwise difference. `(A − B)[i, j] = A[i, j] − B[i, j]`.
+    ///
+    /// Both matrices must have the same shape; the result inherits that shape.
+    public static func - (lhs: Matrix, rhs: Matrix) -> Matrix {
+        Matrix(
+            rows: lhs.rows,
+            columns: lhs.columns,
+            storage: zip(lhs.storage, rhs.storage).map(-)
+        )
+    }
+
+    /// In-place elementwise difference. Equivalent to `lhs = lhs - rhs`.
+    public static func -= (lhs: inout Matrix, rhs: Matrix) {
+        lhs = lhs - rhs
+    }
+
     /// Scalar–matrix multiplication. `(α · A)[i, j] = α · A[i, j]`.
     ///
     /// Used to scale a coefficient matrix by time (e.g. `t · A` in `exp(t · A)`).
@@ -21,6 +42,11 @@ extension Matrix {
             columns: matrix.columns,
             storage: matrix.storage.map { scalar * $0 }
         )
+    }
+
+    /// In-place scalar multiplication. Equivalent to `lhs = scalar * lhs`.
+    public static func *= (lhs: inout Matrix, scalar: Scalar) {
+        lhs = scalar * lhs
     }
 
     /// Matrix–matrix multiplication. `(A · B)[i, j] = Σₖ A[i, k] · B[k, j]`.
@@ -37,6 +63,14 @@ extension Matrix {
             }
         }
         return Matrix(rows: lhs.rows, columns: rhs.columns, storage: storage)
+    }
+
+    /// In-place matrix multiplication. Equivalent to `lhs = lhs * rhs`.
+    ///
+    /// Requires `lhs.columns == rhs.rows`. For non-square `rhs`, `lhs` may change
+    /// shape (rows preserved, columns become `rhs.columns`).
+    public static func *= (lhs: inout Matrix, rhs: Matrix) {
+        lhs = lhs * rhs
     }
 
     /// Matrix–vector application. Treats `vector` as a column and computes `A · v`.
