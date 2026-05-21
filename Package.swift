@@ -32,7 +32,7 @@ let calculus: [Target] = [
 ]
 
 let package = Package(
-    name: "SwiftMath",
+    name: "SwiftCalx",
     platforms: [
         .macOS(.v10_15),
         .iOS(.v13),
@@ -45,13 +45,13 @@ let package = Package(
         .library(name: "Calculus", targets: ["Calculus", "MathOperators"]),
         .library(name: "CalculusNoOperators", targets: ["Calculus"]),
         .library(name: "RungeKutta", targets: ["RungeKutta", "MathOperators"]),
-        .library(name: "SwiftMath", targets: ["SwiftMath"])
+        .library(name: "SwiftCalx", targets: ["SwiftCalx"])
     ],
     dependencies: [
         .package(url: "https://github.com/luizmb/FP.git", from: "1.8.1")
     ],
     targets: customOperator + calculus + [
-        .target(name: "SwiftMath", dependencies: ["RungeKutta", "MathOperators"]),
+        .target(name: "SwiftCalx", dependencies: ["RungeKutta", "MathOperators"]),
         .testTarget(name: "CalculusTests", dependencies: ["Calculus", "MathOperators"]),
         .testTarget(name: "MathOperatorsTests", dependencies: ["MathOperators"]),
         .testTarget(name: "MathTests", dependencies: ["Math", "MathOperators"]),
