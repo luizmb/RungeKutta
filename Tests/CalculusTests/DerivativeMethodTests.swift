@@ -128,7 +128,7 @@ final class DerivativeMethodTests: XCTestCase {
         // Fornberg-generated 3-point central order-1 should equal the hardcoded version.
         let sinFn = Fn<Double> { sin($0) }
         let hardcoded = DerivativeMethod<Double>.CentralStencil.threePoint(order: 1, step: .constant(0.05))
-        let fornberg = DerivativeMethod<Double>.centralStencilCustom(points: 3, order: 1, step: .constant(0.05))
+        let fornberg = DerivativeMethod<Double>.fornbergCentralStencil(points: 3, order: 1, step: .constant(0.05))
         for x in stride(from: -1.0, through: 1.0, by: 0.25) {
             XCTAssertEqual(hardcoded.deriving(sinFn)(x), fornberg.deriving(sinFn)(x), accuracy: 1e-12)
         }
@@ -137,7 +137,7 @@ final class DerivativeMethodTests: XCTestCase {
     func testFornbergMatchesHardcodedFivePointSecondDerivative() {
         let cosFn = Fn<Double> { cos($0) }
         let hardcoded = DerivativeMethod<Double>.CentralStencil.fivePoint(order: 2, step: .constant(0.05))
-        let fornberg = DerivativeMethod<Double>.centralStencilCustom(points: 5, order: 2, step: .constant(0.05))
+        let fornberg = DerivativeMethod<Double>.fornbergCentralStencil(points: 5, order: 2, step: .constant(0.05))
         for x in stride(from: -1.0, through: 1.0, by: 0.25) {
             XCTAssertEqual(hardcoded.deriving(cosFn)(x), fornberg.deriving(cosFn)(x), accuracy: 1e-12)
         }
@@ -148,16 +148,16 @@ final class DerivativeMethodTests: XCTestCase {
         // tolerance ~1e-6 reflects the working precision: h=0.05 raised to the 3rd power
         // is 1.25e-4 in the denominator, amplifying any roundoff in the numerator.
         let sinFn = Fn<Double> { sin($0) }
-        let method = DerivativeMethod<Double>.centralStencilCustom(points: 7, order: 3, step: .constant(0.05))
+        let method = DerivativeMethod<Double>.fornbergCentralStencil(points: 7, order: 3, step: .constant(0.05))
         XCTAssertEqual(method.deriving(sinFn)(1.0), -cos(1.0), accuracy: 1e-6)
     }
 
     func testFornbergRejectsInvalidConfiguration() {
         // Even number of points (non-symmetric around 0 with our convention).
-        let bad = DerivativeMethod<Double>.centralStencilCustom(points: 4, order: 1, step: .constant(0.1))
+        let bad = DerivativeMethod<Double>.fornbergCentralStencil(points: 4, order: 1, step: .constant(0.1))
         XCTAssertTrue(bad.deriving(Fn { _ in 1.0 })(0).isNaN)
         // Order >= points.
-        let bad2 = DerivativeMethod<Double>.centralStencilCustom(points: 3, order: 3, step: .constant(0.1))
+        let bad2 = DerivativeMethod<Double>.fornbergCentralStencil(points: 3, order: 3, step: .constant(0.1))
         XCTAssertTrue(bad2.deriving(Fn { _ in 1.0 })(0).isNaN)
     }
 
