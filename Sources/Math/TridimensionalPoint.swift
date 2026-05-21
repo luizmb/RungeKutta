@@ -1,7 +1,7 @@
 import Foundation
 import RealNumber
 
-public struct TridimensionalPoint<T: ℝ> {
+public struct TridimensionalPoint<T: ℝ>: Sendable {
     public let x: T
     public let y: T
     public let z: T

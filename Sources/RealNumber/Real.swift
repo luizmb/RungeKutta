@@ -2,7 +2,7 @@ import Foundation
 
 public typealias Real = ℝ
 
-public protocol ℝ: SignedNumeric, Comparable {
+public protocol ℝ: SignedNumeric, Comparable, Sendable {
     static var epsilon: Self { get }
     static func /(_ a: Self, _ b: Self) -> Self
     var isNaN: Bool { get }
