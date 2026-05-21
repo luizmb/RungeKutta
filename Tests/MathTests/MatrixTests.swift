@@ -131,6 +131,34 @@ final class MatrixTests: XCTestCase {
         XCTAssertEqual(A ⋅ v, A.apply(to: v))
     }
 
+    // MARK: - In-place arithmetic
+
+    func testPlusEqualMatchesPlus() {
+        var lhs = A
+        lhs += B
+        assertEqual(lhs, A + B)
+    }
+
+    func testSubtractionAndMinusEqual() {
+        let diff = A - B
+        var lhs = A
+        lhs -= B
+        assertEqual(diff + B, A)
+        assertEqual(lhs, diff)
+    }
+
+    func testScalarStarEqualMatchesScalarMultiply() {
+        var lhs = A
+        lhs *= 3.0
+        assertEqual(lhs, 3.0 * A)
+    }
+
+    func testMatrixStarEqualMatchesMatrixMultiply() {
+        var lhs = A
+        lhs *= B
+        assertEqual(lhs, A * B)
+    }
+
     private func assertEqual(_ lhs: Matrix<Double>, _ rhs: Matrix<Double>, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertEqual(lhs.rows, rhs.rows, file: file, line: line)
         XCTAssertEqual(lhs.columns, rhs.columns, file: file, line: line)
