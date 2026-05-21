@@ -1,7 +1,7 @@
-//import XCTest
-//@testable import Math
+// import XCTest
+// @testable import Math
 //
-//final class MathTests: XCTestCase {
+// final class MathTests: XCTestCase {
 //    func testZip() {
 //        let stringify = Function { (int: Int) -> String in
 //            "\(int)"
@@ -14,4 +14,4 @@
 //        XCTAssertEqual(result.0, "42")
 //        XCTAssertEqual(result.1, 84.0)
 //    }
-//}
+// }

@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import RungeKutta
+import XCTest
 
 final class RungeKutta4TrajectoryTests: XCTestCase {
     func testTrajectoryIncludesInitialState() {
@@ -26,7 +26,7 @@ final class RungeKutta4TrajectoryTests: XCTestCase {
         XCTAssertEqual(trajectory.last?.time ?? 0, 1.0, accuracy: 1e-12)
     }
 
-    func testTrajectoryOnBatemanTwoCompartment() {
+    func testTrajectoryOnBatemanTwoCompartment() throws {
         // a → b with rate k=0.1, a(0)=1, b(0)=0. Closed form: a(t) = e^{-kt}, b(t) = 1 - a(t).
         let k = 0.1
         let trajectory = RungeKutta4.trajectory(
@@ -35,7 +35,7 @@ final class RungeKutta4TrajectoryTests: XCTestCase {
             step: 0.1,
             through: 10.0
         )
-        let last = trajectory.last!
+        let last = try XCTUnwrap(trajectory.last)
         XCTAssertEqual(last.time, 10.0, accuracy: 1e-12)
         XCTAssertEqual(last.state[0], exp(-k * 10), accuracy: 1e-10)
         XCTAssertEqual(last.state[1], 1 - exp(-k * 10), accuracy: 1e-10)

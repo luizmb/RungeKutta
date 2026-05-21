@@ -3,7 +3,6 @@ import Foundation
 
 // MARK: - Interpolation & Progress for Floating Points
 extension BinaryFloatingPoint {
-
     /// Linear Interpolation between two floating-point numbers of same type
     /// (https://en.wikipedia.org/wiki/Linear_interpolation)
     /// Usage:
@@ -80,7 +79,6 @@ extension BinaryFloatingPoint {
 
 // MARK: - Interpolation & Progress for Integers
 extension BinaryInteger {
-
     /// Linear Interpolation between two integer numbers of same type
     /// (https://en.wikipedia.org/wiki/Linear_interpolation)
     /// Usage:

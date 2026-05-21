@@ -9,7 +9,7 @@
 import Math
 import XCTest
 
-//class CalculusTests: XCTestCase {
+// class CalculusTests: XCTestCase {
 //    func testDerivativeTangent() {
 //        // given
 //        let testScenarios: [(function: (Decimal) -> Decimal,        point: Decimal, expectedSlope: Decimal)] = [
@@ -104,4 +104,4 @@ import XCTest
 //            XCTAssertEqual(testScenario.expectedIsDifferentiable, isDifferentiableAtPoint)
 //        }
 //    }
-//}
+// }

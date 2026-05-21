@@ -22,11 +22,11 @@ public protocol VectorState: Sendable {
 extension Array: VectorState where Element: ℝ {
     public typealias Scalar = Element
 
-    public static func + (lhs: Array<Element>, rhs: Array<Element>) -> Array<Element> {
+    public static func + (lhs: [Element], rhs: [Element]) -> [Element] {
         Swift.zip(lhs, rhs).map(+)
     }
 
-    public static func * (scalar: Element, state: Array<Element>) -> Array<Element> {
+    public static func * (scalar: Element, state: [Element]) -> [Element] {
         state.map { scalar * $0 }
     }
 }

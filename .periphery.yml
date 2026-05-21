@@ -1,0 +1,17 @@
+retain_public: true
+disable_unused_import_analysis: true
+retain_files:
+  - Tests/**
+
+targets:
+  - Calculus
+  - Math
+  - MathOperators
+  - RealNumber
+  - RungeKutta
+  - SwiftCalx
+  - CalculusTests
+  - MathOperatorsTests
+  - MathTests
+  - RealNumberTests
+  - RungeKuttaTests

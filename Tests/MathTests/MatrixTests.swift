@@ -1,6 +1,6 @@
-import XCTest
-import MathOperators
 @testable import Math
+import MathOperators
+import XCTest
 
 final class MatrixTests: XCTestCase {
     private let tolerance = 1e-12

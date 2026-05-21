@@ -1,5 +1,5 @@
-import Foundation
 @testable import Calculus
+import Foundation
 import XCTest
 
 class FnFibonacciTests: XCTestCase {
@@ -44,34 +44,45 @@ class FnFibonacciTests: XCTestCase {
         .enumerated()
         .forEach { index, tuple in
             let (quickFibo, balancedFibo, preciseFibo) = tuple
-
             print("idx \(index)\t|QuickFibo: \(quickFibo)\tBalancedFibo: \(balancedFibo)\tPreciseFibo: \(preciseFibo)")
-            let accuracyQuick: Double = switch index {
-            case 0..<10: 1e-14
-            case 10..<20: 1e-11
-            case 20..<30: 1e-9
-            case 30..<40: 1e-7
-            case 40..<50: 1e-4
-            case 50..<60: 1e-2
-            case 60..<70: 1e0
-            case 70..<80: 1e2
-            case 80..<90: 1e4
-            default: 1e7
-            }
-            let accuracyBalanced: Double = switch index {
-            case 0..<10: 1e-32
-            case 10..<20: 1e-32
-            case 20..<30: 1e-32
-            case 30..<40: 1e-32
-            case 40..<50: 1e-32
-            case 50..<60: 1e-32
-            case 60..<70: 1e-32
-            case 70..<80: 1e1
-            case 80..<90: 1e3
-            default: 1e5
-            }
-            XCTAssertEqual(quickFibo, preciseFibo, accuracy: accuracyQuick, "Quick Fibo, idx #\(index), difference: \(preciseFibo - quickFibo), should be below \(accuracyQuick)")
-            XCTAssertEqual(balancedFibo, preciseFibo, accuracy: accuracyBalanced, "Balanced Fibo idx #\(index), difference: \(preciseFibo - balancedFibo), should be below \(accuracyBalanced)")
+            let accuracyQuick = quickAccuracyBudget(forIndex: index)
+            let accuracyBalanced = balancedAccuracyBudget(forIndex: index)
+            XCTAssertEqual(
+                quickFibo,
+                preciseFibo,
+                accuracy: accuracyQuick,
+                "Quick Fibo, idx #\(index), diff: \(preciseFibo - quickFibo), bound \(accuracyQuick)"
+            )
+            XCTAssertEqual(
+                balancedFibo,
+                preciseFibo,
+                accuracy: accuracyBalanced,
+                "Balanced Fibo idx #\(index), diff: \(preciseFibo - balancedFibo), bound \(accuracyBalanced)"
+            )
+        }
+    }
+
+    private func quickAccuracyBudget(forIndex index: Int) -> Double {
+        switch index {
+        case 0..<10: 1e-14
+        case 10..<20: 1e-11
+        case 20..<30: 1e-9
+        case 30..<40: 1e-7
+        case 40..<50: 1e-4
+        case 50..<60: 1e-2
+        case 60..<70: 1e0
+        case 70..<80: 1e2
+        case 80..<90: 1e4
+        default: 1e7
+        }
+    }
+
+    private func balancedAccuracyBudget(forIndex index: Int) -> Double {
+        switch index {
+        case 0..<70: 1e-32
+        case 70..<80: 1e1
+        case 80..<90: 1e3
+        default: 1e5
         }
     }
 }

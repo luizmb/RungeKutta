@@ -1,5 +1,5 @@
-import Foundation
 import Calculus
+import Foundation
 import Math
 import RealNumber
 
@@ -35,7 +35,7 @@ extension RungeKutta4 {
     /// `yₙ + Δy`. Wrap with ``calculateNextPoint(Δx:stepCalculator:)`` (or call
     /// `lastPoint.y + Δy` yourself) to advance.
     public static func rk4<T: ℝ & VectorState>(_ fn: @escaping (BidimensionalPoint<T>) -> T)
-    -> (/* lastPoint pt𝓃: */ BidimensionalPoint<T>, /* Δx: */ T) -> /* Δy: */ T where T.Scalar == T {
+    -> (/* lastPoint pt𝓃: */ BidimensionalPoint<T>, /* Δx: */ T) -> T where T.Scalar == T {
         { pt𝓃, Δx in
             let Δy1 = Δx * fn(pt𝓃)
             let Δy2 = Δx * fn(BidimensionalPoint(x: pt𝓃.x + Δx / 2, y: pt𝓃.y + Δy1 / 2))

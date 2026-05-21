@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 @testable import RungeKutta
+import XCTest
 
 final class RungeKutta4VectorTests: XCTestCase {
     /// Bateman 2-compartment `a → b` with rate `k`.
@@ -60,7 +60,7 @@ final class RungeKutta4VectorTests: XCTestCase {
         }
         let trajectory = integrate(derivative: derivative, from: [1, 0], to: 5, step: 0.001)
         for t in [0, 1, 2, 3, 4, 5] {
-            let state = trajectory[t * 1000].state
+            let state = trajectory[t * 1_000].state
             XCTAssertEqual(state[0], cos(omega * Double(t)), accuracy: 1e-9, "x at t=\(t)")
             XCTAssertEqual(state[1], -omega * sin(omega * Double(t)), accuracy: 1e-9, "v at t=\(t)")
         }

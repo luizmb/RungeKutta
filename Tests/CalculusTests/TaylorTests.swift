@@ -1,6 +1,6 @@
-import XCTest
 @testable import Calculus
 @testable import Math
+import XCTest
 
 final class TaylorTests: XCTestCase {
     private let tolerance = 1e-10

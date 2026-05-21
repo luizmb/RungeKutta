@@ -17,13 +17,13 @@ extension RungeKutta4 {
     /// in terms of this one — kept separate for ergonomic `BidimensionalPoint` use).
     public static func rk4<State: VectorState>(
         _ fn: @escaping (State.Scalar, State) -> State
-    ) -> (/* t */ State.Scalar, /* y */ State, /* Δt */ State.Scalar) -> /* Δy */ State {
+    ) -> (/* t */ State.Scalar, /* y */ State, /* Δt */ State.Scalar) -> State {
         { t, y, Δt in
             let half: State.Scalar = Δt / 2
-            let k1 = fn(t,        y)
+            let k1 = fn(t, y)
             let k2 = fn(t + half, y + half * k1)
             let k3 = fn(t + half, y + half * k2)
-            let k4 = fn(t + Δt,   y +   Δt * k3)
+            let k4 = fn(t + Δt, y + Δt * k3)
             return SimpsonWeightedAverage.calculate(Δt * k1, Δt * k2, Δt * k3, Δt * k4)
         }
     }

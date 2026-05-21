@@ -19,7 +19,7 @@ extension Fibonacci: Sequence {
     public func makeIterator() -> Iterator {
         .init(method: method)
     }
-    
+
     public class Iterator: IteratorProtocol {
         public typealias Element = Double
         private var idx: Double = 0

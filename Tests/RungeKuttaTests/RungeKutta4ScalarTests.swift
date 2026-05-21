@@ -1,6 +1,6 @@
-import XCTest
 import Math
 @testable import RungeKutta
+import XCTest
 
 final class RungeKutta4ScalarTests: XCTestCase {
     /// Rosettacode regression: `y' = x·√y`, `y(0) = 1`, exact `y(x) = (x² + 4)² / 16`.
