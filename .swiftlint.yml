@@ -1,0 +1,145 @@
+included:
+  - Sources
+  - Tests
+
+excluded:
+  - .build
+
+opt_in_rules:
+  - array_init
+  - closure_end_indentation
+  - closure_spacing
+  - collection_alignment
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - contains_over_first_not_nil
+  - convenience_type
+  - discouraged_object_literal
+  - discouraged_optional_boolean
+  - discouraged_optional_collection
+  - empty_collection_literal
+  - empty_count
+  - empty_string
+  - empty_xctest_method
+  - explicit_init
+  - fallthrough
+  - fatal_error_message
+  - first_where
+  - force_unwrapping
+  - identical_operands
+  - implicit_return
+  - joined_default_parameter
+  - last_where
+  - legacy_multiple
+  - legacy_random
+  - literal_expression_end_indentation
+  - lower_acl_than_parent
+  - modifier_order
+  - multiline_arguments
+  - multiline_function_chains
+  - multiline_literal_brackets
+  - multiline_parameters
+  # no_extension_access_modifier — disabled: visibility modifier belongs on the extension
+  - nslocalizedstring_key
+  - number_separator
+  - object_literal
+  - operator_usage_whitespace
+  - overridden_super_call
+  - override_in_extension
+  - pattern_matching_keywords
+  - prefer_self_type_over_type_of_self
+  - private_action
+  - private_outlet
+  - prohibited_interface_builder
+  - redundant_nil_coalescing
+  - redundant_type_annotation
+  - sorted_first_last
+  - sorted_imports
+  - strong_iboutlet
+  - toggle_bool
+  - unavailable_function
+  - unneeded_parentheses_in_closure_argument
+  - vertical_parameter_alignment_on_call
+  - vertical_whitespace_closing_braces
+  - vertical_whitespace_opening_braces
+  - xct_specific_matcher
+  - yoda_condition
+
+analyzer_rules:
+  - unused_import          # requires `swiftlint analyze`; declared here for clarity
+
+disabled_rules:
+  - trailing_comma         # not idiomatic in FP-style tuple/arg lists
+  - todo                   # TODOs allowed during development
+  - large_tuple            # FP combinators may require tuples with >2 members
+
+identifier_name:
+  min_length: 1            # FP style uses single-letter names: f, g, a, b, etc.
+  # Capital identifiers (A, B, I, M, N, ...) and Greek (Δx, Δy, Δt) follow
+  # standard mathematical notation for matrices, vectors, and differentials.
+  validates_start_with_lowercase: off
+
+type_name:
+  min_length: 1
+  max_length: 60
+  # The `ℝ` protocol is named after the mathematical real-number set.
+  excluded:
+    - ℝ
+
+generic_type_name:
+  max_length: 30
+
+line_length:
+  warning: 140
+  error: 150
+  ignores_comments: true
+  ignores_urls: true
+
+file_length:
+  warning: 500
+  error: 700
+
+function_body_length:
+  warning: 60
+  error: 100
+
+type_body_length:
+  warning: 300
+  error: 350
+
+function_parameter_count:
+  warning: 6
+  error: 8
+
+cyclomatic_complexity:
+  warning: 12
+  error: 14
+
+nesting:
+  type_level:
+    warning: 3
+  function_level:
+    warning: 3
+
+force_cast: error
+force_try: error
+force_unwrapping: error
+
+custom_rules:
+  double_space:
+    include: "*.swift"
+    name: "Double space"
+    regex: '([a-z,A-Z] \s+)'
+    message: "Double space between keywords"
+    match_kinds: keyword
+    severity: warning
+  comments_space:
+    name: "Space After Comment"
+    regex: '(^ *//\w+)'
+    message: "There should be a space after //"
+    severity: warning
+  unnecessary_type:
+    name: "Unnecessary Type"
+    regex: '[ a-zA-Z0-9]*(?:let|var) [ a-zA-Z0-9]*: ([a-zA-Z0-9]*)[ ]*= \1'
+    message: "Type Definition Not Needed"
+    severity: error

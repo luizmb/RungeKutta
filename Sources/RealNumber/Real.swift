@@ -4,7 +4,7 @@ public typealias Real = ℝ
 
 public protocol ℝ: SignedNumeric, Comparable, Sendable {
     static var epsilon: Self { get }
-    static func /(_ a: Self, _ b: Self) -> Self
+    static func / (_ a: Self, _ b: Self) -> Self
     var isNaN: Bool { get }
     func raisedToThePower(of exponent: Self) -> Self
     static func random<T: RandomNumberGenerator>(in range: Range<Self>, using generator: inout T) -> Self
@@ -23,7 +23,7 @@ extension ℝ {
 
     public func nRoot(degree: Self) -> Self {
         guard self >= 0 || !degree.isMultiple(of: 2) else { return .notANumber }
-        return raisedToThePower(of: (1 as Self)/degree)
+        return raisedToThePower(of: (1 as Self) / degree)
     }
 
     public func isMultiple(of divisor: Self) -> Bool {

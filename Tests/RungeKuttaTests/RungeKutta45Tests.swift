@@ -1,9 +1,8 @@
-import XCTest
 import Math
 @testable import RungeKutta
+import XCTest
 
 final class RungeKutta45Tests: XCTestCase {
-
     // MARK: - Scalar exponential decay (analytic reference)
 
     /// `y' = −k·y`, exact `y(t) = y₀·e^{−k·t}`. The "linear" RK45 sweet spot:
@@ -28,7 +27,7 @@ final class RungeKutta45Tests: XCTestCase {
         for (t, y) in trajectory {
             // Allow the per-step error to accumulate over the integration: a factor
             // of (final time / tolerance) is generous but bounds the worst case.
-            XCTAssertEqual(y, exact(t), accuracy: max(1e-6, tol * 1000), "at t=\(t)")
+            XCTAssertEqual(y, exact(t), accuracy: max(1e-6, tol * 1_000), "at t=\(t)")
         }
     }
 
@@ -38,7 +37,7 @@ final class RungeKutta45Tests: XCTestCase {
     /// `y = [x, x'], dy/dt = [x', −ω²·x]`. Exact closed form
     /// `x(t) = cos(ω·t), x'(t) = −ω·sin(ω·t)`. RK45 should hit the analytic
     /// values to roughly the tolerance accumulated over many periods.
-    func testHarmonicOscillator() {
+    func testHarmonicOscillator() throws {
         let omega = 2.0
         let exact: (Double) -> [Double] = { t in
             [cos(omega * t), -omega * sin(omega * t)]
@@ -63,11 +62,12 @@ final class RungeKutta45Tests: XCTestCase {
         // accumulation is small for tol=1e-8.
         for t in stride(from: 0, through: 10, by: 1) {
             // Find the integrator's nearest accepted time and compare.
-            let nearest = trajectory.min(by: { abs($0.time - Double(t)) < abs($1.time - Double(t)) })!
+            let nearest = try XCTUnwrap(trajectory.min(by: { abs($0.time - Double(t)) < abs($1.time - Double(t)) }))
             let expected = exact(nearest.time)
             for i in 0 ..< 2 {
                 XCTAssertEqual(
-                    nearest.state[i], expected[i],
+                    nearest.state[i],
+                    expected[i],
                     accuracy: 1e-5,
                     "at t=\(nearest.time), component \(i)"
                 )
@@ -81,7 +81,7 @@ final class RungeKutta45Tests: XCTestCase {
     /// `dA/dt = −k·A, dB/dt = k·A − k·B`. Initial `[A, B] = [1, 0]`.
     /// Exact solution: `A(t) = e^{−k·t}`, `B(t) = k·t·e^{−k·t}`. This is the
     /// linear ODE shape that biokinetic compartmental models live in.
-    func testTwoCompartmentCascade() {
+    func testTwoCompartmentCascade() throws {
         let k = 0.1
         let exact: (Double) -> [Double] = { t in
             let decay = exp(-k * t)
@@ -103,7 +103,7 @@ final class RungeKutta45Tests: XCTestCase {
 
         // Spot-check at days {1, 5, 10, 25, 50}.
         for day in [1.0, 5.0, 10.0, 25.0, 50.0] {
-            let nearest = trajectory.min(by: { abs($0.time - day) < abs($1.time - day) })!
+            let nearest = try XCTUnwrap(trajectory.min(by: { abs($0.time - day) < abs($1.time - day) }))
             let expected = exact(nearest.time)
             XCTAssertEqual(nearest.state[0], expected[0], accuracy: 1e-6, "A at t=\(nearest.time)")
             XCTAssertEqual(nearest.state[1], expected[1], accuracy: 1e-6, "B at t=\(nearest.time)")

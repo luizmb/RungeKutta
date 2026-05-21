@@ -88,8 +88,8 @@ extension RungeKutta45 {
         static let a65 = -5_103.0 / 18_656.0
 
         // a7i double as the b5 weights (FSAL property).
+        // a72 = 0 — canonical-tableau zero, elided from code.
         static let a71 = 35.0 / 384.0
-        static let a72 = 0.0
         static let a73 = 500.0 / 1_113.0
         static let a74 = 125.0 / 192.0
         static let a75 = -2_187.0 / 6_784.0
@@ -97,20 +97,19 @@ extension RungeKutta45 {
     }
 
     /// 5th-order solution weights. Equal to `a7*` (FSAL).
+    /// b2 = b7 = 0 — canonical-tableau zeroes, elided from code.
     fileprivate enum B5 {
         static let b1 = A.a71
-        static let b2 = A.a72
         static let b3 = A.a73
         static let b4 = A.a74
         static let b5 = A.a75
         static let b6 = A.a76
-        static let b7 = 0.0
     }
 
     /// 4th-order embedded weights — used to estimate the local truncation error.
+    /// b2 = 0 — canonical-tableau zero, elided from code.
     fileprivate enum B4 {
         static let b1 = 5_179.0 / 57_600.0
-        static let b2 = 0.0
         static let b3 = 7_571.0 / 16_695.0
         static let b4 = 393.0 / 640.0
         static let b5 = -92_097.0 / 339_200.0

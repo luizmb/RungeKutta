@@ -1,10 +1,9 @@
-import Foundation
 @testable import Calculus
+import Foundation
 import RealNumber
 import XCTest
 
 final class DerivativeMethodTests: XCTestCase {
-
     // MARK: - Central stencils, first derivative
 
     func testCentralStencilThreePointFirstDerivativeOnSine() {
