@@ -17,6 +17,13 @@ Snapshot: 2026-05-21. The original "migration plan" (strip RungeKutta down to ma
 - **Author-named factory rename (2026-05-21, [PR #3](https://github.com/luizmb/RungeKutta/pull/3))**. `centralStencilCustom` → `fornbergCentralStencil`. Removed the hollow `Richardson` enum placeholder; `richardsonExtrapolation` stays flat alongside `custom` and `fornbergCentralStencil`. Codified the convention: namespace when a family has multiple members; flat author-prefixed name otherwise.
 - **RungeKutta45 + NormedVectorState (2026-05-21, [PR #4](https://github.com/luizmb/RungeKutta/pull/4))**. Dormand–Prince 5(4) embedded pair with FSAL and PI step-size control. `NormedVectorState: VectorState` adds an `infinityNorm` requirement (needed by adaptive solvers); conformances for `[Element: ℝ]` and the scalar `ℝ` types.
 - **Package rename to `SwiftCalx` (2026-05-21)**. `RungeKutta` / `SwiftMath` umbrella names no longer described the breadth (the package now hosts `Math.Matrix`, `Calculus.Taylor`, `Calculus.SimpsonWeightedAverage`, `Calculus.DerivativeMethod`, `RungeKutta4`, `RungeKutta45`, …). New name from Latin *calx* (small stone for reckoning, root of *calculate*) — short, distinctive, not over-committed to "calculus". Library / target / module names (`Math`, `MathOperators`, `Calculus`, `RungeKutta`, `RealNumber`) stay unchanged so consumers' `import Math` etc. don't break.
+- **Algebraic structure bundle (2026-05-21)**. Follows FP's existing conventions: types with a single canonical monoid conform directly (the way FP conforms `String` and `Array` to `Monoid` under concatenation); types with multiple valid monoids get newtype wrappers (the way FP wraps numbers in `NumericMonoid<T>.{Sum, Product, Min, Max}`).
+  - **Direct `Monoid` conformance** — `BidimensionalPoint<T>` and `TridimensionalPoint<T>` (additive: combine is `+`, identity is the origin), and `DerivativeMethod<Scalar>` (composition: combine is `then(_:)`, identity is the no-op deriver).
+  - **Newtype `Semigroup` wrappers** — `Matrix<Scalar>.Sum` and `Matrix<Scalar>.Product` (naming matches FP's `NumericMonoid.Sum` / `NumericMonoid.Product`). Both natural operations exist, so the wrapper disambiguates. `Semigroup` rather than `Monoid` because the identities (zero matrix / `Iₙ`) need a runtime shape that a `static var Self` can't carry. Folds with `sconcat(_:_:)` (non-empty input) instead of `mconcat(_:)`.
+  - `DerivativeMethod.identity` (static var) and `then(_:)` (instance method) are surfaced directly on the type — same primitives the Monoid conformance uses, useful when monoidal folding isn't needed.
+  - `Matrix.actions(on:count:)` — iterated semigroup action `[x, M·x, M²·x, …, Mⁿ·x]`. The practical mechanic behind Birchall's matrix-exponential semigroup: one expensive `exp(Δt·A)` + n cheap mat-vecs.
+  - `BidimensionalPoint` and `TridimensionalPoint` gain full vector-space arithmetic (`+`, `-`, scalar `*`, `.zero`, `Equatable`, `VectorState` conformance).
+- **First SwiftCalx release `v0.1.0` (2026-05-21)**. Tagged via the new `create-rc` / `promote-rc` automation. DocC site live at https://luizmb.github.io/SwiftCalx/.
 
 ## Current layout
 
@@ -63,11 +70,11 @@ Conventions:
 
 ## ⏳ Pending
 
-### Tag `0.1.0`
-First SwiftCalx release. The repository was renamed from `RungeKutta` to `SwiftCalx` and the version line was reset — pre-rename tags lived on the old `RungeKutta` repo and have no place in the SwiftCalx version history.
+### RK45 dense output (replaces current trajectory API)
+Dormand-Prince's published 5th-order interpolant — store slopes alongside accepted samples; expose `RungeKutta45.trajectory(at: [Double], …) -> [State]` that returns values at user-requested times via cubic-Hermite interpolation. Removes the current adaptive-then-resample-with-linear pattern (which forces consumers to cap `maxStep` and accept 1e-6 cross-solver tolerance). Breaking change — tag SwiftCalx 0.2.0 once landed.
 
 ### Bump MCM (consumer)
-`MultiCompartmentModel` is the only known consumer right now. Replace its `.package(url: "https://github.com/luizmb/RungeKutta.git", from: "1.8.x")` with `.package(url: "https://github.com/luizmb/SwiftCalx.git", from: "0.1.0")` and add a `SolverMethod.rungeKutta45(tolerance:)` case alongside `.birchall` / `.rungeKutta4(stepSize:)`.
+`MultiCompartmentModel` will pick up SwiftCalx 0.2.0 once RK45 dense output lands. Gets a `SolverMethod.rungeKutta45(tolerance:)` case wired through dense output (tighter cross-solver tolerance, no manual `maxStep` cap), plus a `SolverMethod.birchall(composition:)` parameter to pick between today's per-time `Birchall.matrixExponential(t·A)` approach and the new semigroup-composition approach (`exp(Δt·A)` computed once, then `Matrix.actions(on: x₀, count: n)`). The per-time path also gets a `concurrentMap` for free parallelism across independent matrix exponentials.
 
 ### Break the package down
 Consider splitting into separate **repositories** along module lines:

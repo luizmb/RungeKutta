@@ -1,7 +1,8 @@
+import CoreFP
 import Foundation
 import RealNumber
 
-public struct BidimensionalPoint<T: ℝ>: Sendable {
+public struct BidimensionalPoint<T: ℝ>: Sendable, Equatable {
     public let x: T
     public let y: T
 
@@ -13,6 +14,44 @@ public struct BidimensionalPoint<T: ℝ>: Sendable {
     public func slope(to another: BidimensionalPoint) -> T {
         Math.slope(point: self, anotherPoint: another)
     }
+}
+
+// MARK: - Vector space
+
+extension BidimensionalPoint {
+    /// The additive identity: the origin point `(0, 0)`. Combined with elementwise
+    /// `+` and scalar `*`, makes `BidimensionalPoint` a vector space over `T`.
+    public static var zero: BidimensionalPoint {
+        BidimensionalPoint(x: .zero, y: .zero)
+    }
+
+    public static func + (lhs: BidimensionalPoint, rhs: BidimensionalPoint) -> BidimensionalPoint {
+        BidimensionalPoint(x: lhs.x + rhs.x, y: lhs.y + rhs.y)
+    }
+
+    public static func - (lhs: BidimensionalPoint, rhs: BidimensionalPoint) -> BidimensionalPoint {
+        BidimensionalPoint(x: lhs.x - rhs.x, y: lhs.y - rhs.y)
+    }
+
+    public static func * (scalar: T, point: BidimensionalPoint) -> BidimensionalPoint {
+        BidimensionalPoint(x: scalar * point.x, y: scalar * point.y)
+    }
+}
+
+extension BidimensionalPoint: VectorState {
+    public typealias Scalar = T
+}
+
+// MARK: - Monoid (under elementwise addition)
+
+extension BidimensionalPoint: Semigroup {
+    public static func combine(_ lhs: BidimensionalPoint, _ rhs: BidimensionalPoint) -> BidimensionalPoint {
+        lhs + rhs
+    }
+}
+
+extension BidimensionalPoint: Monoid {
+    public static var identity: BidimensionalPoint { .zero }
 }
 
 public func slope<T: ℝ>(point: BidimensionalPoint<T>, anotherPoint: BidimensionalPoint<T>) -> T {
