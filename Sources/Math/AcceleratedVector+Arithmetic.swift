@@ -91,7 +91,7 @@ extension AcceleratedVector {
         }
         return AcceleratedVector(result)
         #else
-        let result: [Double] = Swift.zip(lhs.storage, rhs.storage).map { (a, b) in a - b }
+        let result: [Double] = Swift.zip(lhs.storage, rhs.storage).map { $0 - $1 }
         return AcceleratedVector(result)
         #endif
     }

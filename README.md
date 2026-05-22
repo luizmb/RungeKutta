@@ -258,7 +258,7 @@ v.mapAccelerated { $0 * 2 } // AcceleratedVector — preserves the type for (Dou
 - `α ⋅ v` — scalar `·` vector.
 - `u ⋅ v` — vector dot product (`Σ uᵢ · vᵢ`), routes through `cblas_ddot` on Apple.
 
-**FP integration**: `AcceleratedVector` ships `fmap` / `bind` / `kleisli` / `liftA2` / `apply` / `foldLeft` / `foldRight` / `foldMap` / `cartesian` / `seqLeft` / `seqRight` / `zip` plus a direct `Monoid` conformance under concatenation (mirrors `Array`'s) and an `AcceleratedVector.Sum` `Semigroup` newtype for elementwise additive folds (mirrors `Matrix.Sum`).
+**FP integration**: `AcceleratedVector` ships `fmap` / `bind` / `kleisli` / `liftA2` / `apply` / `foldLeft` / `foldRight` / `foldMap` / `cartesian` / `seqLeft` / `seqRight` / `zip` plus a direct `Monoid` conformance under concatenation (mirrors `Array`'s direct Monoid). Distinct from elementwise `+` (which lives on `VectorState`) — `combine` joins vectors end-to-end and `identity` is empty.
 
 **Use cases**: state vectors for biokinetic / chemical-kinetics ODE solvers; any place a `[Double]` flows through `RungeKutta4` / `RungeKutta45` / a custom `VectorState` consumer where the per-step `+` and `*` are non-trivial overhead.
 

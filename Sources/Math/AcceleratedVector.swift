@@ -1,3 +1,4 @@
+import CoreFP
 import RealNumber
 
 /// A first-class, hardware-acceleration-friendly numeric vector of `Double`.
@@ -72,6 +73,22 @@ public struct AcceleratedVector: Sendable {
 
 extension AcceleratedVector: Equatable {}
 extension AcceleratedVector: Hashable {}
+
+// MARK: - Monoid (under concatenation, mirrors `Array`'s direct conformance)
+//
+// Distinct from elementwise addition (`+`, which lives on the `VectorState`
+// conformance). `combine` joins two vectors end-to-end; `identity` is the
+// empty vector. Fold a sequence of vectors into one with `mconcat`.
+
+extension AcceleratedVector: Semigroup {
+    public static func combine(_ lhs: AcceleratedVector, _ rhs: AcceleratedVector) -> AcceleratedVector {
+        AcceleratedVector(lhs.storage + rhs.storage)
+    }
+}
+
+extension AcceleratedVector: Monoid {
+    public static var identity: AcceleratedVector { AcceleratedVector([]) }
+}
 
 extension AcceleratedVector: CustomStringConvertible {
     public var description: String { "AcceleratedVector(\(storage))" }
