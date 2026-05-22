@@ -3,39 +3,72 @@ import Math
 import RealNumber
 
 extension RungeKutta45 {
-    /// Adaptive-step integration of `dy/dt = f(t, y)` from `t = startingAt` to
-    /// `t = through`, using Dormand–Prince 5(4) with PI step-size control.
+    /// Adaptive-step Dormand–Prince 5(4) integration of `dy/dt = f(t, y)` with
+    /// **dense output**: returns the state at each user-requested time, computed
+    /// by cubic-Hermite interpolation between accepted adaptive steps.
     ///
-    /// The integrator keeps the local truncation error of each step near
-    /// `tolerance` (an infinity-norm bound on `y5 − y4`). Steps with error
-    /// above tolerance are rejected and retried at a smaller step; steps well
-    /// inside it grow the next step. A common practical setup is
-    /// `tolerance = 1e-6` for double-precision work.
+    /// ## Why dense output?
     ///
-    /// Returned `(time, state)` pairs are at the **adaptive** time grid the
-    /// integrator chose — not uniformly spaced. The first element is
-    /// `(startingAt, initialState)` and the last is `(through, finalState)`
-    /// (the final step is shrunk to land exactly on `through`).
+    /// Adaptive RK45 picks the steps it likes for accuracy reasons; it doesn't
+    /// land on any particular grid. Naively resampling its `(time, state)` pairs
+    /// by nearest neighbour or linear interpolation leaks step-size error into
+    /// the output. Dense output stores the slope at each segment endpoint and
+    /// uses ``cubicHermite(at:on:)`` to evaluate the trajectory at any time
+    /// between accepted samples — `C¹`-continuous, locally 4th-order accurate,
+    /// and decoupled from the integrator's step choices.
     ///
-    /// For uniform-cadence sampling, post-process: interpolate between
-    /// adjacent pairs, or run RK45 stage-by-stage with a fixed output cadence.
+    /// For the algorithm itself, see ``step(from:y:k1:size:derivative:)``.
     ///
     /// - Parameters:
+    ///   - outputTimes: times at which to return state. Should be sorted
+    ///     ascending. The integrator runs from `startingAt` to
+    ///     `max(outputTimes)`. Times before `startingAt` return `initialState`;
+    ///     times after the integrated range return the last computed state.
+    ///     Empty input returns `[]`.
     ///   - initialState: `y(startingAt)`.
     ///   - derivative: `f(t, y)`. Required `@Sendable`.
     ///   - startingAt: `t₀` — the initial time. Defaults to `0`.
-    ///   - through: `t₁` — the final time. Must be `> startingAt`.
     ///   - tolerance: target infinity-norm of `y5 − y4` per step.
-    ///   - initialStep: starting `h`. Defaults to `(through − startingAt) / 100`.
-    ///   - minStep: smallest step the integrator will try before bailing. `nil`
-    ///     (default) lets steps shrink without a floor (useful for diagnosing
-    ///     stiffness — the trajectory will just hit `maxIterations`). Set this
-    ///     to bail early if stability matters more than completeness.
-    ///   - maxStep: largest step the integrator will take. `nil` (default)
-    ///     caps at `through − startingAt`.
-    ///   - maxIterations: safety bound on total accepted + rejected steps,
-    ///     to keep stiffness or pathological inputs from infinite-looping.
+    ///   - initialStep: starting `h`. Defaults to `(t_end − startingAt) / 100`.
+    ///   - minStep: smallest step the integrator will try before bailing.
+    ///   - maxStep: largest step the integrator will take. Defaults to the
+    ///     full span — let RK45 take big strides when the dynamics allow.
+    ///   - maxIterations: safety bound on total accepted + rejected steps.
     public static func trajectory<State: NormedVectorState>(
+        at outputTimes: [Double],
+        from initialState: State,
+        derivative: @escaping @Sendable (Double, State) -> State,
+        startingAt t0: Double = 0,
+        tolerance: Double = 1e-6,
+        initialStep: Double? = nil,
+        minStep: Double? = nil,
+        maxStep: Double? = nil,
+        maxIterations: Int = 10_000
+    ) -> [State] where State.Scalar == Double, State: Sendable {
+        guard let tEnd = outputTimes.last, tEnd >= t0 else {
+            return outputTimes.map { _ in initialState }
+        }
+
+        let segments = denseSegments(
+            from: initialState,
+            derivative: derivative,
+            startingAt: t0,
+            through: tEnd,
+            tolerance: tolerance,
+            initialStep: initialStep,
+            minStep: minStep,
+            maxStep: maxStep,
+            maxIterations: maxIterations
+        )
+
+        return outputTimes.map { interpolate(at: $0, segments: segments, initialState: initialState) }
+    }
+
+    /// Walks the adaptive RK45 trajectory from `t0` to `t1` and returns every
+    /// accepted segment with both endpoint slopes attached. Exposed publicly
+    /// because some callers (e.g. diagnostic tooling) want the integrator's
+    /// own time grid, not interpolated values.
+    public static func denseSegments<State: NormedVectorState>(
         from initialState: State,
         derivative: @escaping @Sendable (Double, State) -> State,
         startingAt t0: Double = 0,
@@ -45,8 +78,8 @@ extension RungeKutta45 {
         minStep: Double? = nil,
         maxStep: Double? = nil,
         maxIterations: Int = 10_000
-    ) -> [(time: Double, state: State)] where State.Scalar == Double {
-        guard t1 > t0 else { return [(time: t0, state: initialState)] }
+    ) -> [Segment<State>] where State.Scalar == Double, State: Sendable {
+        guard t1 > t0 else { return [] }
 
         let totalSpan = t1 - t0
         var h = initialStep ?? totalSpan / 100
@@ -56,42 +89,73 @@ extension RungeKutta45 {
         var t = t0
         var y = initialState
         var k1 = derivative(t, y)
-        var trajectory: [(time: Double, state: State)] = [(time: t0, state: initialState)]
+        var segments: [Segment<State>] = []
+        segments.reserveCapacity(128)
         var iterations = 0
 
         while t < t1, iterations < maxIterations {
             iterations += 1
-
-            // Shrink the final step to land exactly on `through`.
             let hStep = min(h, t1 - t)
             let attempt = step(from: t, y: y, k1: k1, size: hStep, derivative: derivative)
 
             if attempt.errorNorm <= tolerance {
-                // Accept: advance, record, reuse k7 as next k1 (FSAL).
+                segments.append(
+                    Segment(
+                        startTime: t,
+                        endTime: t + hStep,
+                        startState: y,
+                        endState: attempt.y5,
+                        startSlope: k1,
+                        endSlope: attempt.kLast
+                    )
+                )
                 t += hStep
                 y = attempt.y5
                 k1 = attempt.kLast
-                trajectory.append((time: t, state: y))
-
-                // Grow the step for next iteration based on how much
-                // headroom we had. The classical PI factor is
-                // `0.9 * (tolerance / error)^(1/5)`, clamped to [0.1, 5].
                 let factor = stepSizeFactor(errorNorm: attempt.errorNorm, tolerance: tolerance)
                 h = min(hCap, max(hFloor, h * factor))
             } else {
-                // Reject: shrink h and retry. Same factor formula, but the
-                // shrink will be < 1 since error > tolerance.
                 let factor = stepSizeFactor(errorNorm: attempt.errorNorm, tolerance: tolerance)
                 let newH = max(hFloor, h * factor)
                 if newH <= hFloor, h <= hFloor {
-                    // Can't shrink further. Bail with what we have.
-                    return trajectory
+                    return segments
                 }
                 h = newH
             }
         }
 
-        return trajectory
+        return segments
+    }
+
+    /// Cubic-Hermite interpolation at `t` against `segments`. Returns
+    /// `initialState` if `t` falls before any segment, the last segment's
+    /// `endState` if `t` falls past every segment.
+    ///
+    /// Bisection finds the bracketing segment in `O(log n)` per query.
+    private static func interpolate<State: NormedVectorState>(
+        at t: Double,
+        segments: [Segment<State>],
+        initialState: State
+    ) -> State where State.Scalar == Double, State: Sendable {
+        guard let first = segments.first else { return initialState }
+        if t <= first.startTime { return initialState }
+        guard let last = segments.last else { return initialState }
+        if t >= last.endTime { return last.endState }
+
+        var lo = 0
+        var hi = segments.count - 1
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if segments[mid].endTime < t {
+                lo = mid + 1
+            } else {
+                hi = mid
+            }
+        }
+        let segment = segments[lo]
+        if t == segment.startTime { return segment.startState }
+        if t == segment.endTime { return segment.endState }
+        return cubicHermite(at: t, on: segment)
     }
 
     /// Standard adaptive-step controller: shrink/grow `h` by
