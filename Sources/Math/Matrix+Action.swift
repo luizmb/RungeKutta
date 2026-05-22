@@ -14,8 +14,8 @@ extension Matrix {
     /// `O(n · rows · cols)` — typically an order of magnitude cheaper. Whenever you
     /// only ever apply the powers of `M` to a fixed starting vector, mat-vec wins.
     ///
-    /// This is the practical mechanic behind Birchall's *matrix-exponential
-    /// semigroup* optimisation: pre-compute `B = exp(Δt · A)` once, then walk the
+    /// This is the practical mechanic behind Birchall's matrix-exponential
+    /// semigroup optimisation: pre-compute `B = exp(Δt · A)` once, then walk the
     /// linear-ODE trajectory with `actions(on: y₀, count: n)`. The full trajectory
     /// costs one expensive matrix exponential plus `n` cheap mat-vecs, instead of
     /// `n + 1` independent matrix exponentials.

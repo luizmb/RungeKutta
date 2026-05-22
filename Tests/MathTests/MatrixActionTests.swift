@@ -2,7 +2,7 @@ import Math
 import MathOperators
 import XCTest
 
-final class MatrixSemigroupActionTests: XCTestCase {
+final class MatrixActionTests: XCTestCase {
     func testActionsZeroCountReturnsInitialOnly() {
         let A = Matrix<Double>.identity(size: 2)
         let trajectory = A.actions(on: [3, 4], count: 0)
