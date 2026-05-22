@@ -12,6 +12,21 @@ let customOperator: [Target] = [
     )
 ]
 
+// System OpenBLAS — Linux-only, depended on by Math only on Linux. Apple
+// consumers never pull this in transitively (Accelerate handles their fast
+// path); pkg-config is only invoked when Math actually builds the dep, which
+// only happens on Linux. See Sources/COpenBLAS/module.modulemap.
+let copenblas: [Target] = [
+    .systemLibrary(
+        name: "COpenBLAS",
+        pkgConfig: "openblas",
+        providers: [
+            .apt(["libopenblas-dev"]),
+            .yum(["openblas-devel"])
+        ]
+    )
+]
+
 let calculus: [Target] = [
     .target(name: "RungeKutta", dependencies: ["Calculus"]),
     .target(
@@ -25,7 +40,8 @@ let calculus: [Target] = [
         name: "Math",
         dependencies: [
             "RealNumber",
-            .product(name: "CoreFP", package: "FP")
+            .product(name: "CoreFP", package: "FP"),
+            .target(name: "COpenBLAS", condition: .when(platforms: [.linux]))
         ]
     ),
     .target(name: "RealNumber")
@@ -51,7 +67,7 @@ let package = Package(
         .package(url: "https://github.com/luizmb/FP.git", from: "1.8.1"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.0")
     ],
-    targets: customOperator + calculus + [
+    targets: customOperator + copenblas + calculus + [
         .target(name: "SwiftCalx", dependencies: ["RungeKutta", "MathOperators"]),
         .testTarget(name: "CalculusTests", dependencies: ["Calculus", "MathOperators"]),
         .testTarget(name: "MathOperatorsTests", dependencies: ["MathOperators"]),

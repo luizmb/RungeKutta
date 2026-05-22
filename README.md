@@ -18,6 +18,7 @@ The name is from Latin *calx* — a small stone used for reckoning in ancient Ro
   - [Operations](#operations)
   - [Iterated action — applying a matrix many times](#iterated-action--applying-a-matrix-many-times)
   - [Matrix.Sum and Matrix.Product — folding semigroup-style](#matrixsum-and-matrixproduct--folding-semigroup-style)
+  - [Hardware-accelerated mat-vec and mat-mat](#hardware-accelerated-mat-vec-and-mat-mat)
   - [Why "repeated squaring"?](#why-repeated-squaring)
 - [Numerical derivatives](#numerical-derivatives)
   - [What is a derivative?](#what-is-a-derivative)
@@ -293,6 +294,27 @@ multiplied.rawValue   // chained matrix product
 ```
 
 (`Matrix.Product.combine` is the algebraic content of the matrix-exponential semigroup `exp((s+t)·A) = exp(s·A) · exp(t·A)`. For the practical iterated-action form, prefer `actions(on:count:)` above — it avoids the `O(n³)` per-step cost of multiplying matrix powers.)
+
+### Hardware-accelerated mat-vec and mat-mat
+
+`Matrix<Double>` and `Matrix<Float>` route their two hot operations — `apply(to:)` (matrix-vector) and `*` (matrix-matrix) — through the platform's optimised BLAS when one is available. No API change; the public methods stay identical. Routing is selected at compile time:
+
+| Platform / config | Backend | What runs |
+|---|---|---|
+| Apple (Mac / iOS / tvOS / watchOS / visionOS) | **Accelerate** | `cblas_dgemv` / `cblas_dgemm`; `vDSP_*` for elementwise `+`, `-`, scalar `*` |
+| Linux + `libopenblas-dev` installed | **OpenBLAS** | `cblas_dgemv` / `cblas_dgemm` from OpenBLAS (auto-detects SSE/AVX/AVX-512 at runtime) |
+| Anywhere else (Linux without OpenBLAS, WASM, …) | **Scalar Swift loops** | The portable implementations in `Matrix+Arithmetic.swift` |
+| Apple with `-D SWIFTCALX_NO_ACCELERATE` | **Scalar Swift loops** | For testing / benchmarking the fallback on Apple hardware |
+
+Expected speedups for typical biokinetic / engineering matrix sizes (16×16 to 100×100): **5–10×** on mat-vec, **10–30×** on mat-mat on Apple via Accelerate; comparable on Linux via OpenBLAS. The wins grow with matrix size — Accelerate / OpenBLAS does cache blocking, prefetching, and (on M-series Macs) the AMX coprocessor.
+
+Other `Scalar` types (`Decimal`, `Float80`, `Float16`) always use the scalar Swift path — there's no cblas equivalent for them.
+
+`#if canImport(COpenBLAS)` only resolves to true on Linux when the consumer's environment provides OpenBLAS. SwiftCalx's `Package.swift` declares the system library target as a Linux-conditional dependency, so:
+
+- **Apple consumers**: zero impact. The COpenBLAS target isn't built; `pkg-config` is never invoked. The Accelerate path wins unconditionally.
+- **Linux consumers without OpenBLAS**: same — the target isn't built. The scalar fallback wins.
+- **Linux consumers with `libopenblas-dev` installed** (`apt install libopenblas-dev` or `yum install openblas-devel`): the cblas path activates.
 
 ### Why "repeated squaring"?
 

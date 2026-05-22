@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  test:
-    name: Build & Test
+  test-macos-accelerate:
+    name: Build & Test (macOS / Accelerate)
     runs-on: macos-26
     env:
       HOMEBREW_NO_AUTO_UPDATE: "1"
@@ -54,8 +54,42 @@ jobs:
       - name: Periphery
         run: periphery scan
 
-  test-linux:
-    name: Build & Test (Linux)
+  test-macos-fallback:
+    name: Build & Test (macOS / scalar fallback)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app
+
+      - name: Build (-D SWIFTCALX_NO_ACCELERATE)
+        run: swift build -Xswiftc -DSWIFTCALX_NO_ACCELERATE 2>&1
+
+      - name: Test (-D SWIFTCALX_NO_ACCELERATE)
+        run: swift test -Xswiftc -DSWIFTCALX_NO_ACCELERATE 2>&1
+
+  test-linux-openblas:
+    name: Build & Test (Linux / OpenBLAS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.2"
+
+      - name: Install OpenBLAS
+        run: sudo apt-get update && sudo apt-get install -y libopenblas-dev pkg-config
+
+      - name: Build
+        run: swift build 2>&1
+
+      - name: Test
+        run: swift test 2>&1
+
+  test-linux-scalar:
+    name: Build & Test (Linux / scalar fallback)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
