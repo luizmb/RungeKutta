@@ -15,6 +15,10 @@ The name is from Latin *calx* — a small stone used for reckoning in ancient Ro
   - [NormedVectorState — vectors with a length](#normedvectorstate--vectors-with-a-length)
   - [BidimensionalPoint and TridimensionalPoint](#bidimensionalpoint-and-tridimensionalpoint)
 - [Matrices](#matrices)
+  - [Operations](#operations)
+  - [Iterated action — applying a matrix many times](#iterated-action--applying-a-matrix-many-times)
+  - [Matrix.Sum and Matrix.Product — folding semigroup-style](#matrixsum-and-matrixproduct--folding-semigroup-style)
+  - [Why "repeated squaring"?](#why-repeated-squaring)
 - [Numerical derivatives](#numerical-derivatives)
   - [What is a derivative?](#what-is-a-derivative)
   - [DerivativeMethod — picking a stencil](#derivativemethod--picking-a-stencil)
@@ -28,6 +32,7 @@ The name is from Latin *calx* — a small stone used for reckoning in ancient Ro
   - [What is an ODE?](#what-is-an-ode)
   - [RungeKutta4 — classical fixed-step solver](#rungekutta4--classical-fixed-step-solver)
   - [RungeKutta45 — Dormand-Prince adaptive solver](#rungekutta45--dormand-prince-adaptive-solver)
+    - [Dense output — querying the trajectory at chosen times](#dense-output--querying-the-trajectory-at-chosen-times)
   - [Choosing between RK4 and RK45](#choosing-between-rk4-and-rk45)
   - [SimpsonWeightedAverage — the weighting underneath](#simpsonweightedaverage--the-weighting-underneath)
 - [Fibonacci](#fibonacci)
@@ -63,7 +68,7 @@ The library targets **students, scientific Swift developers, and educators** —
 Swift Package Manager. In your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/luizmb/SwiftCalx.git", from: "0.1.0")
+.package(url: "https://github.com/luizmb/SwiftCalx.git", from: "0.2.0")
 ```
 
 Then pick a product for each target that needs it:
@@ -184,21 +189,36 @@ Built-in conformances: same as `VectorState` (so an `Array<Element: ℝ>` has `i
 
 ### BidimensionalPoint and TridimensionalPoint
 
-Plain value types for 2D and 3D points over any `ℝ`:
+Plain value types for 2D and 3D points over any `ℝ`. Both ship full **vector-space arithmetic** (addition, subtraction, scalar multiplication, `.zero`), conform to ``VectorState`` so they can flow through ODE solvers like any other state, and conform directly to FP's ``Monoid`` under elementwise addition (origin is identity).
 
 ```swift
 let p = BidimensionalPoint(x: 1.0, y: 2.0)
 let q = BidimensionalPoint(x: 4.0, y: 6.0)
-p.slope(to: q)   // 1.333… — the slope of the line through p and q
+
+p.slope(to: q)        // 1.333… — slope of the line through p and q
+p + q                 // (5, 8)
+q - p                 // (3, 4)
+2.0 * p               // (2, 4)
+BidimensionalPoint<Double>.zero            // (0, 0) — origin / Monoid identity
+
+// Fold a sequence with FP's mconcat (uses combine = +, identity = .zero)
+import CoreFP
+let centroidSum: BidimensionalPoint<Double> = mconcat([
+    BidimensionalPoint(x: 1, y: 2),
+    BidimensionalPoint(x: 3, y: 4),
+    BidimensionalPoint(x: 5, y: 6),
+])   // (9, 12)
 ```
 
 `slope(to:)` returns `Δy / Δx`. If `Δx == 0` (a vertical line) it returns `0` rather than crashing, on the principle "no vertical-tangent fatal errors in numerical code"; check `Δx` yourself if you need to distinguish a vertical line from a flat one.
 
 The scalar `rk4` overload of [`RungeKutta4`](#rungekutta4--classical-fixed-step-solver) takes a `BidimensionalPoint` because that's the natural shape for a single `(time, value)` pair in 1D ODE integration. The vector overload uses any `VectorState` for higher dimensions.
 
-`TridimensionalPoint` is the obvious 3D version; useful for 3D trajectories. Less commonly needed in numerical code than `BidimensionalPoint`.
+`TridimensionalPoint` is the obvious 3D version with the same arithmetic + Monoid story; useful for 3D trajectories.
 
-**Use cases**: ODE integration plots, geometric calculations, slope-of-line algorithms.
+**Why direct `Monoid` conformance, not a `.Sum` wrapper?** A point only has one canonical Monoid (additive — scalar `*` has signature `(T, Point) → Point`, which is a vector-space scalar action, not a Monoid operation on `Point`). The same reason FP conforms `String` and `Array` directly to `Monoid` rather than wrapping them: there's no competing operation to disambiguate against. Compare to `Matrix`, which has *two* natural operations (addition and multiplication), so it ships [`Matrix.Sum` / `Matrix.Product`](#matrices) newtypes instead.
+
+**Use cases**: ODE integration plots, geometric calculations, slope-of-line algorithms, summing positions or velocities across particles.
 
 ---
 
@@ -226,14 +246,53 @@ Storage is **row-major**: `storage[r * columns + c]` is the entry at row `r`, co
 let B = Matrix<Double>(rows: 2, columns: 2, storage: [5, 6, 7, 8])
 
 let sum     = A + B                   // element-wise addition
+let diff    = A - B                   // element-wise subtraction
 let scaled  = 2.0 * A                 // scalar multiplication (scalar on left)
 let product = A ⋅ B                   // matrix-matrix product (dot operator)
 let vec     = A ⋅ [1.0, 2.0]          // matrix-vector product → [Double]
 let squared = A.squared(times: 3)     // A^(2^3) = A^8 via repeated squaring
 let updated = A.with(row: 0, column: 1, value: 99) // immutable single-element edit
+
+// Mutating counterparts of every operator above:
+var acc = A
+acc += B          // in-place add
+acc -= B          // in-place subtract
+acc *= 3.0        // in-place scalar multiply
+acc *= B          // in-place matrix multiply
 ```
 
 The `⋅` operator (the DOT OPERATOR character, U+22C5) is from `MathOperators`. It's overloaded for `Matrix ⋅ Matrix`, `Matrix ⋅ Vector` (i.e. `[Scalar]`), and `Scalar ⋅ Matrix`. Named-function equivalents (`A.applied(to: vector)`, `A * B`) are also available for projects that don't want the operator.
+
+### Iterated action — applying a matrix many times
+
+When you want the trajectory of a vector under repeated application of the same matrix — `[x, M·x, M²·x, …, Mⁿ·x]` — use `actions(on:count:)`:
+
+```swift
+let trajectory = M.actions(on: x0, count: 1000)
+// trajectory.count == 1001 (initial + n applications)
+// trajectory[k] == M^k · x0
+```
+
+Why a dedicated method instead of `Mⁿ · x0` via `squared(times:)`? Cost. Repeated matrix multiplication is `O(n · rows³)`. Repeated matrix-vector application is `O(n · rows · cols)` — typically an order of magnitude cheaper, and the only thing that survives to the result is the trajectory anyway.
+
+This is the practical mechanic behind **Birchall's matrix-exponential semigroup**: pre-compute `B = exp(Δt · A)` once with a single matrix exponential, then walk the linear-ODE trajectory with `B.actions(on: y₀, count: n)`. One expensive exp + n cheap mat-vecs, instead of n + 1 independent matrix exponentials. Numerical caveat: iterating `M·x` accumulates floating-point error roughly as `n · ε · κ(M)`, so well-conditioned matrices stay accurate over many iterations; stiff systems may not.
+
+### Matrix.Sum and Matrix.Product — folding semigroup-style
+
+Matrix addition and multiplication are both natural Monoid operations, but their identities (the zero matrix and `Iₙ`) need a runtime shape that Swift's `static var identity: Self` can't carry. So `Matrix` follows FP's `NumericMonoid.Sum` / `NumericMonoid.Product` pattern and ships **newtype Semigroups** instead — fold with `sconcat(_:_:)` (non-empty input, no identity required):
+
+```swift
+import CoreFP
+
+let matrices: [Matrix<Double>] = [/* shape-matched */]
+let summed = sconcat(Matrix.Sum(matrices[0]), matrices.dropFirst().map(Matrix.Sum.init))
+summed.rawValue   // elementwise sum of all matrices
+
+let multiplied = sconcat(Matrix.Product(matrices[0]), matrices.dropFirst().map(Matrix.Product.init))
+multiplied.rawValue   // chained matrix product
+```
+
+(`Matrix.Product.combine` is the algebraic content of the matrix-exponential semigroup `exp((s+t)·A) = exp(s·A) · exp(t·A)`. For the practical iterated-action form, prefer `actions(on:count:)` above — it avoids the `O(n³)` per-step cost of multiplying matrix powers.)
 
 ### Why "repeated squaring"?
 
@@ -338,6 +397,22 @@ fPrime(.pi)   // ≈ cos(π) ≈ −1, accurate to ~1e-7 with adaptative step
 **Use cases**: anywhere you have `f` as code but need `f'`. Newton's method for root finding, gradient computations for optimisation, sensitivity analysis, slope fields for ODE visualisation, numerical Jacobians for multidimensional Newton.
 
 **Read more**: [Wikipedia — Finite difference coefficient](https://en.wikipedia.org/wiki/Finite_difference_coefficient); [Press et al., *Numerical Recipes*, §5.7](https://numerical.recipes/).
+
+**Composing methods**: `DerivativeMethod` conforms directly to FP's ``Monoid`` under left-to-right composition. `combine = then(_:)` chains derivers (orders add); `identity` is the no-op method that returns its input unchanged. Same convention FP applies to `String`/`Array`: composition is the only canonical operation, so no `.Composition` wrapper.
+
+```swift
+import CoreFP
+
+let stencil = DerivativeMethod<Double>.CentralStencil.threePoint(order: 1, step: .adaptative)
+
+// Chain manually:
+let secondDerivative = stencil.then(stencil)   // order 2 = 1 + 1
+
+// Or fold a pipeline through mconcat:
+let pipeline: DerivativeMethod<Double> = mconcat(Array(repeating: stencil, count: 3))   // order 3
+```
+
+Chaining 1st-order stencils to get higher orders compounds truncation error — prefer a direct higher-order method (e.g. `CentralStencil.fivePoint(order: 2, …)`) when one exists. Composition is for cases where no direct method fits, or for combining heterogeneous stages.
 
 ### Richardson extrapolation
 
@@ -558,36 +633,58 @@ The growth/shrink factor is `0.9 · (tolerance / error)^(1/5)`, clamped to `[0.1
 
 **FSAL** (First-Same-As-Last): `k₇` of an accepted step equals `k₁` of the next step. The integrator caches and reuses it, saving one function evaluation per accepted step.
 
+#### Dense output — querying the trajectory at chosen times
+
+The adaptive integrator picks the times it wants for accuracy; you pick the times you want for output. SwiftCalx bridges them with **dense output**: each accepted segment stores both endpoint slopes, and `trajectory(at:…)` returns the state at any time you ask for via `C¹`-continuous, `O(h⁴)` cubic-Hermite interpolation between segments.
+
 ```swift
 import RungeKutta
 
 // Harmonic oscillator d²x/dt² = -ω²x, written as the coupled first-order
 // system y = [x, x'], dy/dt = [x', -ω²x]. Exact: x(t) = cos(ω t).
-let trajectory = RungeKutta45.trajectory(
+let values = RungeKutta45.trajectory(
+    at: [0, 1, 2, 5, 10],                              // exactly these times
     from: [1.0, 0.0],                                  // initial [x, x']
     derivative: { _, y in [y[1], -4 * y[0]] },          // ω² = 4
+    tolerance: 1e-8
+)
+// values: [State]  — one entry per requested time, interpolated from the
+//                   adaptive trajectory the integrator chose internally.
+```
+
+Requesting a time before `startingAt` returns the initial state; requesting one past the integrated range returns the last computed state. Empty input returns `[]`.
+
+The integrator's own adaptive samples are still reachable when you need them — typically for diagnostics or plotting the raw steps the integrator chose:
+
+```swift
+let segments = RungeKutta45.denseSegments(
+    from: [1.0, 0.0],
+    derivative: { _, y in [y[1], -4 * y[0]] },
     through: 10,
     tolerance: 1e-8
 )
-// trajectory times are NOT uniformly spaced — the integrator picked them
-// to keep per-step error near tolerance
+// segments: [RungeKutta45.Segment]  — startTime, endTime, startState, endState,
+//                                     startSlope, endSlope per accepted step.
+// Use RungeKutta45.cubicHermite(at:on:) to interpolate inside one segment.
 ```
 
-The trajectory always starts with `(t₀, y₀)` and ends exactly at `through` (the final step is shrunk to land on it).
+**When to use it**: smooth non-stiff ODEs where you don't want to hand-tune a step size. Set a tolerance, hand it the times you care about, let the integrator do the rest. For long integrations across regions of different "speed" (rapidly changing then smoothly settling), the adaptive step is a big win and dense output decouples your output cadence from the integrator's internal one.
 
-**When to use it**: smooth non-stiff ODEs where you don't want to hand-tune a step size. Set a tolerance instead and let the integrator do the rest. For long integrations across regions of different "speed" (rapidly changing then smoothly settling), the adaptive step is a big win.
+**Accuracy note**: cubic Hermite is `O(h⁴)` locally — one order short of the 5th-order integrator. For the smooth linear ODEs typical of biokinetic / chemical-kinetics / control-system applications, this gap is invisible in practice (with `tolerance ≤ 1e-8`, interpolation error stays below `1e-9` even when RK45 takes day-long strides). Dormand-Prince's published 5th-order continuous extension would close the gap entirely; it's planned for a future release if a concrete use case (chaotic dynamics, ultra-fine plotting) demands it.
 
-**Read more**: Dormand, J.R. & Prince, P.J. (1980). *A family of embedded Runge-Kutta formulae*. Journal of Computational and Applied Mathematics 6(1): 19–26. Hairer, Nørsett & Wanner, *Solving Ordinary Differential Equations I: Nonstiff Problems* (Springer, 1993), §II.5. [Wikipedia — Dormand-Prince method](https://en.wikipedia.org/wiki/Dormand%E2%80%93Prince_method).
+**Read more**: Dormand, J.R. & Prince, P.J. (1980). *A family of embedded Runge-Kutta formulae*. Journal of Computational and Applied Mathematics 6(1): 19–26. Hairer, Nørsett & Wanner, *Solving Ordinary Differential Equations I: Nonstiff Problems* (Springer, 1993), §II.5 (algorithm) and §II.6 (dense output). [Wikipedia — Dormand-Prince method](https://en.wikipedia.org/wiki/Dormand%E2%80%93Prince_method); [Cubic Hermite spline](https://en.wikipedia.org/wiki/Cubic_Hermite_spline).
 
 ### Choosing between RK4 and RK45
 
+Both can deliver state at any output time you ask for (RK4 directly via its fixed grid; RK45 via dense output). The choice is about cost, not output shape.
+
 | Situation | Recommended |
 |---|---|
-| Fixed output cadence (every 0.1 s for plotting) | `RungeKutta4` |
 | Step size known analytically (from a paper, a stability analysis) | `RungeKutta4` |
-| Don't want to think about step size | `RungeKutta45` |
-| Smooth long integration with mixed timescales | `RungeKutta45` |
-| Linear ODE with constant coefficients (`dy⃗/dt = A·y⃗`) | **Neither — use the matrix exponential** via `Taylor.exponential` or a scaling-and-squaring variant. It's exact. |
+| Predictable cost per output sample matters more than adaptivity | `RungeKutta4` |
+| Don't want to think about step size; want the integrator to manage it | `RungeKutta45` |
+| Smooth long integration with mixed timescales (some intervals smooth, some rapid) | `RungeKutta45` |
+| Linear ODE with constant coefficients (`dy⃗/dt = A·y⃗`) | **Neither — use the matrix exponential** via `Taylor.exponential` or a scaling-and-squaring variant. It's exact. For trajectory walks, [`Matrix.actions(on:count:)`](#iterated-action--applying-a-matrix-many-times) is the cheap form. |
 | Stiff ODE (eigenvalues of Jacobian differ by orders of magnitude) | **Neither** — explicit RK needs tiny steps for stability, not accuracy. Use an implicit method (BDF / Rosenbrock / implicit RK5). Not yet shipped; see [Roadmap](#roadmap). |
 
 ### SimpsonWeightedAverage — the weighting underneath
@@ -722,12 +819,11 @@ Swift 5.10 toolchain or later. Swift 6 strict concurrency mode is supported (the
 
 ## Roadmap
 
-See [`MIGRATION_PLAN.md`](MIGRATION_PLAN.md) for the full snapshot. Headline items:
+See [`MIGRATION_PLAN.md`](MIGRATION_PLAN.md) for the full snapshot. Headline pending items:
 
-- **Tag `0.1.0`** — first SwiftCalx release.
-- **Bump consumers** — MCM gets `SolverMethod.rungeKutta45(tolerance:)` and the SwiftCalx package URL.
 - **Split into separate repos** (eventually) — `Math`, `MathOperators`, `Calculus`, `RungeKutta`, `SwiftCalx` (umbrella) as independent packages, so consumers pull only what they need.
-- **More ODE solvers** when needed — Adams-Bashforth-Moulton (predictor-corrector), BDF (for stiff systems), implicit RK5 (Radau IIA), Rosenbrock, dense-output interpolation for `RungeKutta45`.
+- **Dormand-Prince 5th-order continuous extension** — match the integrator's accuracy floor on `RungeKutta45` dense output (currently cubic Hermite, `O(h⁴)`). Defer until a use case needs the extra order; for biokinetic and most engineering ODEs the existing interpolant is comfortable.
+- **More ODE solvers** when needed — Adams-Bashforth-Moulton (predictor-corrector), BDF (for stiff systems), implicit RK5 (Radau IIA), Rosenbrock.
 - **Quadrature** — Simpson, Gauss-Legendre, Romberg, adaptive Gauss-Kronrod.
 - **Root finding** — Newton (via existing `DerivativeFunction`), bisection, secant, Brent, multidimensional Newton.
 - **Optimisation** — gradient descent, Newton-for-optimisation, BFGS / L-BFGS, conjugate gradient.
