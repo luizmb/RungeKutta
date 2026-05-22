@@ -1,3 +1,4 @@
+import CoreFP
 import Foundation
 import RealNumber
 
@@ -38,4 +39,16 @@ extension TridimensionalPoint {
 
 extension TridimensionalPoint: VectorState {
     public typealias Scalar = T
+}
+
+// MARK: - Monoid (under elementwise addition)
+
+extension TridimensionalPoint: Semigroup {
+    public static func combine(_ lhs: TridimensionalPoint, _ rhs: TridimensionalPoint) -> TridimensionalPoint {
+        lhs + rhs
+    }
+}
+
+extension TridimensionalPoint: Monoid {
+    public static var identity: TridimensionalPoint { .zero }
 }

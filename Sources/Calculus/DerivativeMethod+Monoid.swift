@@ -21,34 +21,23 @@ extension DerivativeMethod {
             other.deriving(self.deriving(f))
         }
     }
+}
 
-    /// `DerivativeMethod` under left-to-right composition as a monoid.
-    /// Identity is ``DerivativeMethod/identity``; combine is ``then(_:)``.
-    ///
-    /// Newtype wrapper following FP's ``NumericMonoid`` pattern, so methods
-    /// fold cleanly with ``mconcat(_:)``:
-    ///
-    /// ```swift
-    /// let pipeline = mconcat(stages.map(DerivativeMethod.Composition.init))
-    /// let derivative = pipeline.rawValue.deriving(f)
-    /// ```
-    public struct Composition: Monoid, RawRepresentable {
-        public let rawValue: DerivativeMethod<Scalar>
+// MARK: - Monoid (under left-to-right composition)
+//
+// Composition is the only canonical monoid on `DerivativeMethod` — there's no
+// competing notion of "combine" the way `Double` has both `+` and `*`. So
+// `DerivativeMethod` conforms directly, the same way FP conforms `String` and
+// `Array` directly to `Monoid` under concatenation rather than wrapping them
+// in a newtype.
 
-        public init(_ rawValue: DerivativeMethod<Scalar>) {
-            self.rawValue = rawValue
-        }
-
-        public init?(rawValue: DerivativeMethod<Scalar>) {
-            self.init(rawValue)
-        }
-
-        public static func combine(_ lhs: Composition, _ rhs: Composition) -> Composition {
-            Composition(lhs.rawValue.then(rhs.rawValue))
-        }
-
-        public static var identity: Composition {
-            Composition(.identity)
-        }
+extension DerivativeMethod: Semigroup {
+    public static func combine(
+        _ lhs: DerivativeMethod<Scalar>,
+        _ rhs: DerivativeMethod<Scalar>
+    ) -> DerivativeMethod<Scalar> {
+        lhs.then(rhs)
     }
 }
+
+extension DerivativeMethod: Monoid {}

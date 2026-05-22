@@ -1,3 +1,4 @@
+import CoreFP
 import Foundation
 import RealNumber
 
@@ -39,6 +40,18 @@ extension BidimensionalPoint {
 
 extension BidimensionalPoint: VectorState {
     public typealias Scalar = T
+}
+
+// MARK: - Monoid (under elementwise addition)
+
+extension BidimensionalPoint: Semigroup {
+    public static func combine(_ lhs: BidimensionalPoint, _ rhs: BidimensionalPoint) -> BidimensionalPoint {
+        lhs + rhs
+    }
+}
+
+extension BidimensionalPoint: Monoid {
+    public static var identity: BidimensionalPoint { .zero }
 }
 
 public func slope<T: ℝ>(point: BidimensionalPoint<T>, anotherPoint: BidimensionalPoint<T>) -> T {

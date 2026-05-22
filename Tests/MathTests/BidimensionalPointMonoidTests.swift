@@ -6,46 +6,43 @@ final class BidimensionalPointMonoidTests: XCTestCase {
     typealias P = BidimensionalPoint<Double>
 
     func testIdentityIsTheOrigin() {
-        XCTAssertEqual(P.Additive.identity.rawValue, P(x: 0, y: 0))
+        XCTAssertEqual(P.identity, P(x: 0, y: 0))
     }
 
     func testLeftIdentityReturnsValue() {
-        let p = P.Additive(P(x: 3, y: -2.5))
-        XCTAssertEqual(P.Additive.combine(.identity, p).rawValue, p.rawValue)
+        let p = P(x: 3, y: -2.5)
+        XCTAssertEqual(P.combine(.identity, p), p)
     }
 
     func testRightIdentityReturnsValue() {
-        let p = P.Additive(P(x: 3, y: -2.5))
-        XCTAssertEqual(P.Additive.combine(p, .identity).rawValue, p.rawValue)
+        let p = P(x: 3, y: -2.5)
+        XCTAssertEqual(P.combine(p, .identity), p)
     }
 
     func testCombineMatchesElementwiseAddition() {
-        let lhs = P.Additive(P(x: 1, y: 2))
-        let rhs = P.Additive(P(x: 4, y: -3))
-        XCTAssertEqual(P.Additive.combine(lhs, rhs).rawValue, P(x: 5, y: -1))
+        let lhs = P(x: 1, y: 2)
+        let rhs = P(x: 4, y: -3)
+        XCTAssertEqual(P.combine(lhs, rhs), P(x: 5, y: -1))
     }
 
     func testAssociativity() {
-        let a = P.Additive(P(x: 1, y: 2))
-        let b = P.Additive(P(x: 3, y: 4))
-        let c = P.Additive(P(x: 5, y: 6))
-        XCTAssertEqual(
-            P.Additive.combine(P.Additive.combine(a, b), c).rawValue,
-            P.Additive.combine(a, P.Additive.combine(b, c)).rawValue
-        )
+        let a = P(x: 1, y: 2)
+        let b = P(x: 3, y: 4)
+        let c = P(x: 5, y: 6)
+        XCTAssertEqual(P.combine(P.combine(a, b), c), P.combine(a, P.combine(b, c)))
     }
 
     func testMConcatOnEmptyArrayReturnsIdentity() {
-        let result: P.Additive = mconcat([])
-        XCTAssertEqual(result.rawValue, .zero)
+        let result: P = mconcat([])
+        XCTAssertEqual(result, .zero)
     }
 
     func testMConcatFoldsSequenceThroughCombine() {
-        let result: P.Additive = mconcat([
-            P.Additive(P(x: 1, y: 2)),
-            P.Additive(P(x: 3, y: 4)),
-            P.Additive(P(x: 5, y: 6))
+        let result: P = mconcat([
+            P(x: 1, y: 2),
+            P(x: 3, y: 4),
+            P(x: 5, y: 6)
         ])
-        XCTAssertEqual(result.rawValue, P(x: 9, y: 12))
+        XCTAssertEqual(result, P(x: 9, y: 12))
     }
 }

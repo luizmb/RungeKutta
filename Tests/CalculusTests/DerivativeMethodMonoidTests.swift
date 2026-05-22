@@ -46,54 +46,35 @@ final class DerivativeMethodMonoidTests: XCTestCase {
         )
     }
 
-    // MARK: - Composition newtype Monoid
+    // MARK: - Direct Monoid conformance
 
-    func testCompositionIdentityIsTheIdentityMethod() {
-        let id = DerivativeMethod<Double>.Composition.identity
-        XCTAssertEqual(id.rawValue.order, 0)
-        XCTAssertEqual(id.rawValue.deriving(f)(2.0), f(2.0))
-    }
-
-    func testCompositionCombineMatchesThen() {
-        let combined = DerivativeMethod<Double>.Composition.combine(
-            DerivativeMethod<Double>.Composition(stencil),
-            DerivativeMethod<Double>.Composition(stencil)
-        )
-        XCTAssertEqual(combined.rawValue.order, stencil.then(stencil).order)
+    func testCombineMatchesThen() {
+        let combined = DerivativeMethod<Double>.combine(stencil, stencil)
+        XCTAssertEqual(combined.order, stencil.then(stencil).order)
         XCTAssertEqual(
-            combined.rawValue.deriving(f)(2.0),
+            combined.deriving(f)(2.0),
             stencil.then(stencil).deriving(f)(2.0),
             accuracy: 1e-12
         )
     }
 
-    func testCompositionMConcatOnEmptyArrayReturnsIdentity() {
-        let result: DerivativeMethod<Double>.Composition = mconcat([])
-        XCTAssertEqual(result.rawValue.order, 0)
-        XCTAssertEqual(result.rawValue.deriving(f)(2.0), f(2.0))
+    func testMConcatOnEmptyArrayReturnsIdentity() {
+        let result: DerivativeMethod<Double> = mconcat([])
+        XCTAssertEqual(result.order, 0)
+        XCTAssertEqual(result.deriving(f)(2.0), f(2.0))
     }
 
-    func testCompositionMConcatChainsStages() {
-        let stages = Array(repeating: DerivativeMethod<Double>.Composition(stencil), count: 3)
-        let composed: DerivativeMethod<Double>.Composition = mconcat(stages)
-        XCTAssertEqual(composed.rawValue.order, 3)
+    func testMConcatChainsStages() {
+        let stages = Array(repeating: stencil, count: 3)
+        let composed: DerivativeMethod<Double> = mconcat(stages)
+        XCTAssertEqual(composed.order, 3)
     }
 
-    func testCompositionIsAssociative() {
-        let s = DerivativeMethod<Double>.Composition(stencil)
-        let lhs = DerivativeMethod<Double>.Composition.combine(
-            DerivativeMethod<Double>.Composition.combine(s, s),
-            s
-        )
-        let rhs = DerivativeMethod<Double>.Composition.combine(
-            s,
-            DerivativeMethod<Double>.Composition.combine(s, s)
-        )
-        XCTAssertEqual(lhs.rawValue.order, rhs.rawValue.order)
-        XCTAssertEqual(
-            lhs.rawValue.deriving(f)(2.0),
-            rhs.rawValue.deriving(f)(2.0),
-            accuracy: 1e-6
-        )
+    func testCombineIsAssociative() {
+        let s = stencil
+        let lhs = DerivativeMethod<Double>.combine(DerivativeMethod<Double>.combine(s, s), s)
+        let rhs = DerivativeMethod<Double>.combine(s, DerivativeMethod<Double>.combine(s, s))
+        XCTAssertEqual(lhs.order, rhs.order)
+        XCTAssertEqual(lhs.deriving(f)(2.0), rhs.deriving(f)(2.0), accuracy: 1e-6)
     }
 }
