@@ -6,32 +6,29 @@
 //   Override with `-D SWIFTCALX_NO_ACCELERATE` to force the scalar fallback
 //   (useful for testing/benchmarking that the fallback stays correct on Apple
 //   hardware).
-// - Linux with OpenBLAS available: the cblas path via OpenBLAS. Triggered
-//   when the consumer's build can `canImport(COpenBLAS)` — which only
-//   happens if the `Math` target's Linux-conditional dependency on the
-//   `COpenBLAS` system library resolves successfully (i.e. `libopenblas-dev`
-//   is installed and `pkg-config openblas` works).
-// - Everything else (Linux without OpenBLAS, WASM, anywhere `Accelerate` and
-//   `COpenBLAS` are both unavailable): the existing scalar Swift loops in
-//   `Matrix+Arithmetic.swift`. No-op — the generic versions in that file just
-//   run as-is.
+// - Everything else (Linux, WASM, anywhere `Accelerate` is unavailable):
+//   the existing scalar Swift loops in `Matrix+Arithmetic.swift`. No-op — the
+//   generic versions in that file just run as-is.
+//
+// OpenBLAS integration for Linux is tracked as a future iteration in
+// MIGRATION_PLAN — the same-repo conditional-target design doesn't work
+// cleanly because SwiftPM tries to build the system library target on any
+// Linux build, regardless of whether the user has OpenBLAS installed. The
+// cleaner shape is a separate bridge package consumers add explicitly.
 
 #if canImport(Accelerate) && !SWIFTCALX_NO_ACCELERATE
 import Accelerate
-#elseif canImport(COpenBLAS)
-import COpenBLAS
 #endif
 
-#if (canImport(Accelerate) && !SWIFTCALX_NO_ACCELERATE) || canImport(COpenBLAS)
+#if canImport(Accelerate) && !SWIFTCALX_NO_ACCELERATE
 
 // MARK: - Matrix * vector (mat-vec)
 
 extension Matrix where Scalar == Double {
-    /// BLAS-accelerated `apply(to:)`. `cblas_dgemv` is the per-platform tuned
-    /// matrix-vector product — on Apple it goes through Accelerate's hand-tuned
-    /// kernels (NEON/AMX on M-series); on Linux through OpenBLAS's runtime-
-    /// detected SSE/AVX/AVX-512 kernels. Result is numerically equivalent to
-    /// the scalar `apply(to:)` up to floating-point accumulation order.
+    /// BLAS-accelerated `apply(to:)`. `cblas_dgemv` is Accelerate's
+    /// hand-tuned matrix-vector product, using NEON/AMX kernels on M-series.
+    /// Result is numerically equivalent to the scalar `apply(to:)` up to
+    /// floating-point accumulation order.
     public func apply(to vector: [Double]) -> [Double] {
         guard rows > 0, columns > 0 else { return Array(repeating: 0, count: rows) }
         var result = [Double](repeating: 0, count: rows)
@@ -95,10 +92,11 @@ extension Matrix where Scalar == Float {
 // MARK: - Matrix * matrix (mat-mat)
 
 extension Matrix where Scalar == Double {
-    /// BLAS-accelerated matrix-matrix product. `cblas_dgemm` does cache blocking
-    /// and per-chip kernel selection — typically 5–20× faster than the naive
-    /// triple-loop for the matrix sizes that show up in biokinetic / linear-
-    /// algebra workloads, and dramatically more for larger matrices.
+    /// BLAS-accelerated matrix-matrix product. `cblas_dgemm` does cache blocking,
+    /// per-chip kernel selection, and (on M-series Macs) uses the AMX
+    /// coprocessor — typically 5–20× faster than the naive triple-loop for
+    /// the matrix sizes that show up in biokinetic / linear-algebra workloads,
+    /// and dramatically more for larger matrices.
     public static func * (lhs: Matrix, rhs: Matrix) -> Matrix {
         guard lhs.rows > 0, rhs.columns > 0, lhs.columns > 0 else {
             return Matrix(rows: lhs.rows, columns: rhs.columns, storage: Array(repeating: 0, count: lhs.rows * rhs.columns))

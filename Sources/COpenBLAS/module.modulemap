@@ -1,5 +1,0 @@
-module COpenBLAS [system] {
-    header "shim.h"
-    link "openblas"
-    export *
-}

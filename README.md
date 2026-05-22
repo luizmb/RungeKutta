@@ -297,24 +297,19 @@ multiplied.rawValue   // chained matrix product
 
 ### Hardware-accelerated mat-vec and mat-mat
 
-`Matrix<Double>` and `Matrix<Float>` route their two hot operations — `apply(to:)` (matrix-vector) and `*` (matrix-matrix) — through the platform's optimised BLAS when one is available. No API change; the public methods stay identical. Routing is selected at compile time:
+`Matrix<Double>` and `Matrix<Float>` route their two hot operations — `apply(to:)` (matrix-vector) and `*` (matrix-matrix) — through Apple's Accelerate framework when available. No API change; the public methods stay identical. Routing is selected at compile time:
 
 | Platform / config | Backend | What runs |
 |---|---|---|
 | Apple (Mac / iOS / tvOS / watchOS / visionOS) | **Accelerate** | `cblas_dgemv` / `cblas_dgemm`; `vDSP_*` for elementwise `+`, `-`, scalar `*` |
-| Linux + `libopenblas-dev` installed | **OpenBLAS** | `cblas_dgemv` / `cblas_dgemm` from OpenBLAS (auto-detects SSE/AVX/AVX-512 at runtime) |
-| Anywhere else (Linux without OpenBLAS, WASM, …) | **Scalar Swift loops** | The portable implementations in `Matrix+Arithmetic.swift` |
+| Linux, WASM, anywhere `Accelerate` is unavailable | **Scalar Swift loops** | The portable implementations in `Matrix+Arithmetic.swift` |
 | Apple with `-D SWIFTCALX_NO_ACCELERATE` | **Scalar Swift loops** | For testing / benchmarking the fallback on Apple hardware |
 
-Expected speedups for typical biokinetic / engineering matrix sizes (16×16 to 100×100): **5–10×** on mat-vec, **10–30×** on mat-mat on Apple via Accelerate; comparable on Linux via OpenBLAS. The wins grow with matrix size — Accelerate / OpenBLAS does cache blocking, prefetching, and (on M-series Macs) the AMX coprocessor.
+Expected speedups for typical biokinetic / engineering matrix sizes (16×16 to 100×100): **5–10×** on mat-vec, **10–30×** on mat-mat on Apple via Accelerate. The wins grow with matrix size — Accelerate does cache blocking, prefetching, and (on M-series Macs) uses the AMX coprocessor for large enough operands.
 
 Other `Scalar` types (`Decimal`, `Float80`, `Float16`) always use the scalar Swift path — there's no cblas equivalent for them.
 
-`#if canImport(COpenBLAS)` only resolves to true on Linux when the consumer's environment provides OpenBLAS. SwiftCalx's `Package.swift` declares the system library target as a Linux-conditional dependency, so:
-
-- **Apple consumers**: zero impact. The COpenBLAS target isn't built; `pkg-config` is never invoked. The Accelerate path wins unconditionally.
-- **Linux consumers without OpenBLAS**: same — the target isn't built. The scalar fallback wins.
-- **Linux consumers with `libopenblas-dev` installed** (`apt install libopenblas-dev` or `yum install openblas-devel`): the cblas path activates.
+**Linux performance**: an OpenBLAS-based bridge package is tracked as a future iteration in `MIGRATION_PLAN.md`. The shape will be a separate `swift-calx-openblas` Swift package consumers add explicitly when they want the Linux fast path — same repo can't ship OpenBLAS support cleanly because SwiftPM lacks a "build this system library only if `pkg-config` succeeds" condition.
 
 ### Why "repeated squaring"?
 
@@ -694,7 +689,7 @@ let segments = RungeKutta45.denseSegments(
 
 **Accuracy note**: cubic Hermite is `O(h⁴)` locally — one order short of the 5th-order integrator. For the smooth linear ODEs typical of biokinetic / chemical-kinetics / control-system applications, this gap is invisible in practice (with `tolerance ≤ 1e-8`, interpolation error stays below `1e-9` even when RK45 takes day-long strides). Dormand-Prince's published 5th-order continuous extension would close the gap entirely; it's planned for a future release if a concrete use case (chaotic dynamics, ultra-fine plotting) demands it.
 
-**Performance note — `[Double]`-specialised fast path**: when the initial state is `[Double]`, Swift's overload resolution picks a concrete-typed `trajectory` / `denseSegments` that routes the per-stage state combination through `vDSP_vsmaD` (fused scalar-multiply-add). This is selected at compile time — no runtime type check, no protocol gymnastics. Other `NormedVectorState` conformers (e.g. `BidimensionalPoint<Double>`, custom state types) keep using the generic trajectory transparently. Apple-only; on Linux / non-Accelerate Apple builds (`-D SWIFTCALX_NO_ACCELERATE`), the generic path runs and still benefits from `cblas_dgemv` inside the derivative function (the dominant cost).
+**Performance note — `[Double]`-specialised fast path**: when the initial state is `[Double]`, Swift's overload resolution picks a concrete-typed `trajectory` / `denseSegments` that routes the per-stage state combination through `vDSP_vsmaD` (fused scalar-multiply-add). This is selected at compile time — no runtime type check, no protocol gymnastics. Other `NormedVectorState` conformers (e.g. `BidimensionalPoint<Double>`, custom state types) keep using the generic trajectory transparently. Apple-only; on Linux / non-Accelerate Apple builds (`-D SWIFTCALX_NO_ACCELERATE`), the generic path runs and uses the scalar Swift implementations of `+` and `*`.
 
 **Read more**: Dormand, J.R. & Prince, P.J. (1980). *A family of embedded Runge-Kutta formulae*. Journal of Computational and Applied Mathematics 6(1): 19–26. Hairer, Nørsett & Wanner, *Solving Ordinary Differential Equations I: Nonstiff Problems* (Springer, 1993), §II.5 (algorithm) and §II.6 (dense output). [Wikipedia — Dormand-Prince method](https://en.wikipedia.org/wiki/Dormand%E2%80%93Prince_method); [Cubic Hermite spline](https://en.wikipedia.org/wiki/Cubic_Hermite_spline).
 
