@@ -4,30 +4,30 @@ import RealNumber
 import Accelerate
 #endif
 
-// MARK: - Dot operator overloads for Vector
+// MARK: - Dot operator overloads for AcceleratedVector
 //
 // Extends the `⋅` operator family from `Matrix+Operators.swift` to cover
-// `Vector` interop. Reads naturally as it would on paper:
-//   - `A ⋅ v`         matrix–vector apply, returns `Vector` (was `[Scalar]`)
+// `AcceleratedVector` interop. Reads naturally as it would on paper:
+//   - `A ⋅ v`         matrix–vector apply, returns `AcceleratedVector` (was `[Scalar]`)
 //   - `α ⋅ v`         scalar–vector multiply
 //   - `u ⋅ v`         vector–vector dot product (Σ u_i · v_i)
 
-/// Matrix-Vector application, `Vector` form. Equivalent to `matrix.apply(to: vector)`.
-/// Bridges generic `⋅` callers into `Vector`-land when the right-hand side is a `Vector`.
-public func ⋅ (matrix: Matrix<Double>, vector: Vector) -> Vector {
+/// Matrix-AcceleratedVector application, `AcceleratedVector` form. Equivalent to `matrix.apply(to: vector)`.
+/// Bridges generic `⋅` callers into `AcceleratedVector`-land when the right-hand side is a `AcceleratedVector`.
+public func ⋅ (matrix: Matrix<Double>, vector: AcceleratedVector) -> AcceleratedVector {
     matrix.apply(to: vector)
 }
 
 /// Scalar-vector multiplication. Equivalent to `scalar * vector`.
-public func ⋅ (scalar: Double, vector: Vector) -> Vector {
+public func ⋅ (scalar: Double, vector: AcceleratedVector) -> AcceleratedVector {
     scalar * vector
 }
 
-/// Vector-vector dot product: `Σ u_i · v_i`. Returns a single `Double`.
+/// AcceleratedVector-vector dot product: `Σ u_i · v_i`. Returns a single `Double`.
 /// On Apple, routes through `cblas_ddot` (Accelerate's BLAS Level 1 dot
 /// kernel — SIMD, register-tuned per chip). Falls back to a scalar
 /// `zip + reduce` on non-Apple builds or `-D SWIFTCALX_NO_ACCELERATE`.
-public func ⋅ (lhs: Vector, rhs: Vector) -> Double {
+public func ⋅ (lhs: AcceleratedVector, rhs: AcceleratedVector) -> Double {
     #if canImport(Accelerate) && !SWIFTCALX_NO_ACCELERATE
     let n = Int32(lhs.storage.count)
     var result = 0.0

@@ -6,16 +6,16 @@ import Accelerate
 
 // MARK: - VectorState / NormedVectorState conformance
 //
-// These conformances are the whole reason `Vector` exists: the protocol
+// These conformances are the whole reason `AcceleratedVector` exists: the protocol
 // witnesses for `+` and `*` go through the optimised path below, which means
 // every generic-over-`VectorState` consumer (RK45, RK4, Birchall's iterated
 // action, future solvers) automatically picks up the speedup when their
-// state is `Vector`.
+// state is `AcceleratedVector`.
 
-extension Vector: VectorState {
+extension AcceleratedVector: VectorState {
     public typealias Scalar = Double
 
-    public static func + (lhs: Vector, rhs: Vector) -> Vector {
+    public static func + (lhs: AcceleratedVector, rhs: AcceleratedVector) -> AcceleratedVector {
         #if canImport(Accelerate) && !SWIFTCALX_NO_ACCELERATE
         let n = lhs.storage.count
         var result = [Double](repeating: 0, count: n)
@@ -28,13 +28,13 @@ extension Vector: VectorState {
                 }
             }
         }
-        return Vector(result)
+        return AcceleratedVector(result)
         #else
-        return Vector(zip(lhs.storage, rhs.storage).map(+))
+        return AcceleratedVector(Swift.zip(lhs.storage, rhs.storage).map(+))
         #endif
     }
 
-    public static func * (scalar: Double, vector: Vector) -> Vector {
+    public static func * (scalar: Double, vector: AcceleratedVector) -> AcceleratedVector {
         #if canImport(Accelerate) && !SWIFTCALX_NO_ACCELERATE
         let n = vector.storage.count
         var result = [Double](repeating: 0, count: n)
@@ -46,14 +46,14 @@ extension Vector: VectorState {
                 }
             }
         }
-        return Vector(result)
+        return AcceleratedVector(result)
         #else
-        return Vector(vector.storage.map { scalar * $0 })
+        return AcceleratedVector(vector.storage.map { scalar * $0 })
         #endif
     }
 }
 
-extension Vector: NormedVectorState {
+extension AcceleratedVector: NormedVectorState {
     public var infinityNorm: Double {
         #if canImport(Accelerate) && !SWIFTCALX_NO_ACCELERATE
         var result = 0.0
@@ -74,8 +74,8 @@ extension Vector: NormedVectorState {
 
 // MARK: - Additional ergonomic arithmetic (subtraction + in-place forms)
 
-extension Vector {
-    public static func - (lhs: Vector, rhs: Vector) -> Vector {
+extension AcceleratedVector {
+    public static func - (lhs: AcceleratedVector, rhs: AcceleratedVector) -> AcceleratedVector {
         #if canImport(Accelerate) && !SWIFTCALX_NO_ACCELERATE
         // vDSP_vsubD: result = b - a (note the argument order — swap to get lhs - rhs).
         let n = lhs.storage.count
@@ -89,13 +89,14 @@ extension Vector {
                 }
             }
         }
-        return Vector(result)
+        return AcceleratedVector(result)
         #else
-        return Vector(zip(lhs.storage, rhs.storage).map(-))
+        let result: [Double] = Swift.zip(lhs.storage, rhs.storage).map { (a, b) in a - b }
+        return AcceleratedVector(result)
         #endif
     }
 
-    public static func += (lhs: inout Vector, rhs: Vector) { lhs = lhs + rhs }
-    public static func -= (lhs: inout Vector, rhs: Vector) { lhs = lhs - rhs }
-    public static func *= (lhs: inout Vector, scalar: Double) { lhs = scalar * lhs }
+    public static func += (lhs: inout AcceleratedVector, rhs: AcceleratedVector) { lhs = lhs + rhs }
+    public static func -= (lhs: inout AcceleratedVector, rhs: AcceleratedVector) { lhs = lhs - rhs }
+    public static func *= (lhs: inout AcceleratedVector, scalar: Double) { lhs = scalar * lhs }
 }

@@ -10,29 +10,29 @@ final class VectorOperatorsTests: XCTestCase {
             1, 2, 3,
             4, 5, 6
         ])
-        let v = Vector([1.0, 2.0, 3.0])
-        XCTAssertEqual(A ⋅ v, Vector([14.0, 32.0]))
+        let v = AcceleratedVector([1.0, 2.0, 3.0])
+        XCTAssertEqual(A ⋅ v, AcceleratedVector([14.0, 32.0]))
     }
 
     func testScalarDotVector() {
-        XCTAssertEqual(3.0 ⋅ Vector([1.0, 2.0, 3.0]),
-                       Vector([3.0, 6.0, 9.0]))
+        XCTAssertEqual(3.0 ⋅ AcceleratedVector([1.0, 2.0, 3.0]),
+                       AcceleratedVector([3.0, 6.0, 9.0]))
     }
 
     func testVectorDotProduct() {
-        let u = Vector([1.0, 2.0, 3.0])
-        let v = Vector([4.0, 5.0, 6.0])
+        let u = AcceleratedVector([1.0, 2.0, 3.0])
+        let v = AcceleratedVector([4.0, 5.0, 6.0])
         XCTAssertEqual(u ⋅ v, 32.0, accuracy: tolerance)   // 1·4 + 2·5 + 3·6
     }
 
     func testDotProductWithOrthogonalVectorsIsZero() {
-        let u = Vector([1.0, 0.0])
-        let v = Vector([0.0, 1.0])
+        let u = AcceleratedVector([1.0, 0.0])
+        let v = AcceleratedVector([0.0, 1.0])
         XCTAssertEqual(u ⋅ v, 0.0, accuracy: tolerance)
     }
 
     func testDotProductWithSelfIsSquaredNorm() {
-        let v = Vector([3.0, 4.0])
+        let v = AcceleratedVector([3.0, 4.0])
         // Pythagoras: ||v||² = 9 + 16 = 25
         XCTAssertEqual(v ⋅ v, 25.0, accuracy: tolerance)
     }

@@ -14,7 +14,7 @@ The name is from Latin *calx* — a small stone used for reckoning in ancient Ro
   - [VectorState — a vector you can add and scale](#vectorstate--a-vector-you-can-add-and-scale)
   - [NormedVectorState — vectors with a length](#normedvectorstate--vectors-with-a-length)
   - [BidimensionalPoint and TridimensionalPoint](#bidimensionalpoint-and-tridimensionalpoint)
-  - [Vector](#vector)
+  - [AcceleratedVector](#acceleratedvector)
 - [Matrices](#matrices)
   - [Operations](#operations)
   - [Iterated action — applying a matrix many times](#iterated-action--applying-a-matrix-many-times)
@@ -222,39 +222,43 @@ The scalar `rk4` overload of [`RungeKutta4`](#rungekutta4--classical-fixed-step-
 
 **Use cases**: ODE integration plots, geometric calculations, slope-of-line algorithms, summing positions or velocities across particles.
 
-### Vector
+### AcceleratedVector
 
-`Vector` is a concrete `[Double]`-backed value type that exists for one reason: to be the **opt-in fast state type** for the solvers. Wrapping your `[Double]` once at the entry point lets every per-stage `+` and `*` along the integration trajectory route through hand-tuned BLAS / vDSP kernels on Apple platforms — automatically, through the protocol witness for `VectorState`.
+`AcceleratedVector` is a concrete `[Double]`-backed value type that exists for one reason: to be the **opt-in fast state type** for the solvers. Wrapping your `[Double]` once at the entry point lets every per-stage `+` and `*` along the integration trajectory route through hand-tuned BLAS / vDSP kernels on Apple platforms — automatically, through the protocol witness for `VectorState`.
+
+The name is deliberately blunt about what the type is: a hardware-accelerated, `Double`-only, vector-shaped storage. **It's not the general mathematical "vector" abstraction** — that's `Array<T>` where `T: ℝ`, which already conforms to `VectorState` and represents the abstraction of a vector over any computable approximation of ℝ. `AcceleratedVector` is a performance-tuned concrete sibling, not a replacement for that abstraction.
 
 ```swift
 import Math
 
-let v = Vector([1.0, 2.0, 3.0])
+let v = AcceleratedVector([1.0, 2.0, 3.0])
 // or:
-let w = [4.0, 5.0, 6.0].asVector
+let w = [4.0, 5.0, 6.0].asAcceleratedVector
 
-v + w               // Vector([5.0, 7.0, 9.0])  — vDSP_vaddD on Apple
-v - w               // Vector([-3.0, -3.0, -3.0])
-2.0 * v             // Vector([2.0, 4.0, 6.0])
-v.infinityNorm      // 3.0
+v + w                       // [5, 7, 9]  — vDSP_vaddD on Apple
+v - w                       // [-3, -3, -3]
+2.0 * v                     // [2, 4, 6]
+v.infinityNorm              // 3.0
 
 // Collection conformance: for-each, subscript, map, filter, reduce all work.
-v[1]                // 2.0
+v[1]                        // 2.0
 for x in v { … }
-v.filter { $0 > 1 }     // [Double] — Array semantics for non-type-preserving ops
-v.mapVector { $0 * 2 }  // Vector — preserves Vector when input/output are both Double
+v.filter { $0 > 1 }         // [Double] — Array semantics for non-type-preserving ops
+v.mapAccelerated { $0 * 2 } // AcceleratedVector — preserves the type for (Double) -> Double
 ```
 
-**Why a wrapper around `[Double]`?** Swift selects the `VectorState` protocol witness for `+` and `*` at the conformance site. `Array<Element>` conforms when `Element: ℝ` — generic over Element, so the witness uses the scalar `zip(...).map(+)` implementation. There's no way to "specialise" that witness for `Element == Double` without violating the protocol rules (multiple conformances, name-clash with the existing `+`). `Vector` sidesteps the problem by being its own concrete type whose witness for `+` IS the vDSP path. Generic solver code dispatches naturally through the witness — no specialisation overloads on RK45 / RK4, no runtime type checks, no `.+` operator.
+**Why a wrapper around `[Double]`?** Swift selects the `VectorState` protocol witness for `+` and `*` at the conformance site. `Array<Element>` conforms when `Element: ℝ` — generic over Element, so the witness uses the scalar `zip(...).map(+)` implementation. There's no way to "specialise" that witness for `Element == Double` without violating the protocol rules (multiple conformances, name-clash with the existing `+`). `AcceleratedVector` sidesteps the problem by being its own concrete type whose witness for `+` IS the vDSP path. Generic solver code dispatches naturally through the witness — no specialisation overloads on RK45 / RK4, no runtime type checks, no `.+` operator.
 
-**When Vector doesn't matter**: on non-Apple builds (Linux / WASM) and on Apple builds with `-D SWIFTCALX_NO_ACCELERATE`, `Vector`'s `+` / `*` fall back to the same scalar Swift implementation that `[Double]` uses. No win; no loss. The performance edge is specifically vDSP.
+**Why not generic `AcceleratedVector<T: ℝ>`?** The same dispatch problem. A generic version would have to declare its `VectorState` conformance for any `T: ℝ`, and the witness body couldn't call `vDSP_vaddD` because it wouldn't know `T == Double`. The whole reason for AcceleratedVector existing is that it's *concrete*. For `Float` (which also has vDSP / cblas support), the right shape is a sibling concrete type — `AcceleratedFloatVector` or similar — when a consumer actually needs it. For `Decimal`, `Float80`, `Float16` etc. there's no fast path to add; consumers stay on `Array<T>`.
+
+**When AcceleratedVector doesn't matter**: on non-Apple builds (Linux / WASM) and on Apple builds with `-D SWIFTCALX_NO_ACCELERATE`, `AcceleratedVector`'s `+` / `*` fall back to the same scalar Swift implementation that `[Double]` uses. No win; no loss. The performance edge is specifically vDSP.
 
 **Operators in `MathOperators`**:
-- `A ⋅ v` — `Matrix<Double> · Vector`, returns `Vector`. Bridges `⋅` callers into `Vector`-land.
+- `A ⋅ v` — `Matrix<Double> · AcceleratedVector`, returns `AcceleratedVector`. Bridges `⋅` callers into accelerated-land.
 - `α ⋅ v` — scalar `·` vector.
 - `u ⋅ v` — vector dot product (`Σ uᵢ · vᵢ`), routes through `cblas_ddot` on Apple.
 
-**FP integration**: `Vector` ships `fmap` / `bind` / `kleisli` / `liftA2` / `apply` mirroring FP's `Array+{Functor, Monad, Applicative}` extensions, so consumers can fold it into the same compositional pipelines they use for `Array`.
+**FP integration**: `AcceleratedVector` ships `fmap` / `bind` / `kleisli` / `liftA2` / `apply` / `foldLeft` / `foldRight` / `foldMap` / `cartesian` / `seqLeft` / `seqRight` / `zip` plus a direct `Monoid` conformance under concatenation (mirrors `Array`'s) and an `AcceleratedVector.Sum` `Semigroup` newtype for elementwise additive folds (mirrors `Matrix.Sum`).
 
 **Use cases**: state vectors for biokinetic / chemical-kinetics ODE solvers; any place a `[Double]` flows through `RungeKutta4` / `RungeKutta45` / a custom `VectorState` consumer where the per-step `+` and `*` are non-trivial overhead.
 
@@ -726,7 +730,7 @@ let segments = RungeKutta45.denseSegments(
 
 **Accuracy note**: cubic Hermite is `O(h⁴)` locally — one order short of the 5th-order integrator. For the smooth linear ODEs typical of biokinetic / chemical-kinetics / control-system applications, this gap is invisible in practice (with `tolerance ≤ 1e-8`, interpolation error stays below `1e-9` even when RK45 takes day-long strides). Dormand-Prince's published 5th-order continuous extension would close the gap entirely; it's planned for a future release if a concrete use case (chaotic dynamics, ultra-fine plotting) demands it.
 
-**Performance note — `Vector` opt-in fast state type**: wrapping your `[Double]` in `Vector` (`Vector([1.0, 2.0])` or `[1.0, 2.0].asVector`) routes every per-stage `+` and scalar `*` through vDSP-backed implementations via the protocol witness. The generic trajectory body is unchanged; the dispatch is automatic because `Vector` is its own concrete `VectorState` conformer with optimised operations. Apple-only (vDSP); on Linux / `-D SWIFTCALX_NO_ACCELERATE` the same `Vector` falls back to scalar Swift. See [Vector](#vector) for the type itself.
+**Performance note — `AcceleratedVector` opt-in fast state type**: wrapping your `[Double]` in `AcceleratedVector` (`AcceleratedVector([1.0, 2.0])` or `[1.0, 2.0].asAcceleratedVector`) routes every per-stage `+` and scalar `*` through vDSP-backed implementations via the protocol witness. The generic trajectory body is unchanged; the dispatch is automatic because `AcceleratedVector` is its own concrete `VectorState` conformer with optimised operations. Apple-only (vDSP); on Linux / `-D SWIFTCALX_NO_ACCELERATE` the same `AcceleratedVector` falls back to scalar Swift. See [AcceleratedVector](#acceleratedvector) for the type itself.
 
 **Read more**: Dormand, J.R. & Prince, P.J. (1980). *A family of embedded Runge-Kutta formulae*. Journal of Computational and Applied Mathematics 6(1): 19–26. Hairer, Nørsett & Wanner, *Solving Ordinary Differential Equations I: Nonstiff Problems* (Springer, 1993), §II.5 (algorithm) and §II.6 (dense output). [Wikipedia — Dormand-Prince method](https://en.wikipedia.org/wiki/Dormand%E2%80%93Prince_method); [Cubic Hermite spline](https://en.wikipedia.org/wiki/Cubic_Hermite_spline).
 
