@@ -55,7 +55,7 @@ public enum RungeKutta45 { }
 extension RungeKutta45 {
     /// Time offsets at which the seven stages are evaluated, relative to `t`.
     /// `c1 = 0` (the start of the step) is implicit and omitted.
-    internal enum C {
+    fileprivate enum C {
         static let c2 = 1.0 / 5.0
         static let c3 = 3.0 / 10.0
         static let c4 = 4.0 / 5.0
@@ -66,7 +66,7 @@ extension RungeKutta45 {
 
     /// Inter-stage weights — the `a[i][j]` from the Butcher tableau, naming the
     /// fields directly so the recurrence reads like the textbook.
-    internal enum A {
+    fileprivate enum A {
         static let a21 = 1.0 / 5.0
 
         static let a31 = 3.0 / 40.0
@@ -98,7 +98,7 @@ extension RungeKutta45 {
 
     /// 5th-order solution weights. Equal to `a7*` (FSAL).
     /// b2 = b7 = 0 — canonical-tableau zeroes, elided from code.
-    internal enum B5 {
+    fileprivate enum B5 {
         static let b1 = A.a71
         static let b3 = A.a73
         static let b4 = A.a74
@@ -108,7 +108,7 @@ extension RungeKutta45 {
 
     /// 4th-order embedded weights — used to estimate the local truncation error.
     /// b2 = 0 — canonical-tableau zero, elided from code.
-    internal enum B4 {
+    fileprivate enum B4 {
         static let b1 = 5_179.0 / 57_600.0
         static let b3 = 7_571.0 / 16_695.0
         static let b4 = 393.0 / 640.0

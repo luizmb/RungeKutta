@@ -14,6 +14,7 @@ The name is from Latin *calx* — a small stone used for reckoning in ancient Ro
   - [VectorState — a vector you can add and scale](#vectorstate--a-vector-you-can-add-and-scale)
   - [NormedVectorState — vectors with a length](#normedvectorstate--vectors-with-a-length)
   - [BidimensionalPoint and TridimensionalPoint](#bidimensionalpoint-and-tridimensionalpoint)
+  - [Vector](#vector)
 - [Matrices](#matrices)
   - [Operations](#operations)
   - [Iterated action — applying a matrix many times](#iterated-action--applying-a-matrix-many-times)
@@ -220,6 +221,42 @@ The scalar `rk4` overload of [`RungeKutta4`](#rungekutta4--classical-fixed-step-
 **Why direct `Monoid` conformance, not a `.Sum` wrapper?** A point only has one canonical Monoid (additive — scalar `*` has signature `(T, Point) → Point`, which is a vector-space scalar action, not a Monoid operation on `Point`). The same reason FP conforms `String` and `Array` directly to `Monoid` rather than wrapping them: there's no competing operation to disambiguate against. Compare to `Matrix`, which has *two* natural operations (addition and multiplication), so it ships [`Matrix.Sum` / `Matrix.Product`](#matrices) newtypes instead.
 
 **Use cases**: ODE integration plots, geometric calculations, slope-of-line algorithms, summing positions or velocities across particles.
+
+### Vector
+
+`Vector` is a concrete `[Double]`-backed value type that exists for one reason: to be the **opt-in fast state type** for the solvers. Wrapping your `[Double]` once at the entry point lets every per-stage `+` and `*` along the integration trajectory route through hand-tuned BLAS / vDSP kernels on Apple platforms — automatically, through the protocol witness for `VectorState`.
+
+```swift
+import Math
+
+let v = Vector([1.0, 2.0, 3.0])
+// or:
+let w = [4.0, 5.0, 6.0].asVector
+
+v + w               // Vector([5.0, 7.0, 9.0])  — vDSP_vaddD on Apple
+v - w               // Vector([-3.0, -3.0, -3.0])
+2.0 * v             // Vector([2.0, 4.0, 6.0])
+v.infinityNorm      // 3.0
+
+// Collection conformance: for-each, subscript, map, filter, reduce all work.
+v[1]                // 2.0
+for x in v { … }
+v.filter { $0 > 1 }     // [Double] — Array semantics for non-type-preserving ops
+v.mapVector { $0 * 2 }  // Vector — preserves Vector when input/output are both Double
+```
+
+**Why a wrapper around `[Double]`?** Swift selects the `VectorState` protocol witness for `+` and `*` at the conformance site. `Array<Element>` conforms when `Element: ℝ` — generic over Element, so the witness uses the scalar `zip(...).map(+)` implementation. There's no way to "specialise" that witness for `Element == Double` without violating the protocol rules (multiple conformances, name-clash with the existing `+`). `Vector` sidesteps the problem by being its own concrete type whose witness for `+` IS the vDSP path. Generic solver code dispatches naturally through the witness — no specialisation overloads on RK45 / RK4, no runtime type checks, no `.+` operator.
+
+**When Vector doesn't matter**: on non-Apple builds (Linux / WASM) and on Apple builds with `-D SWIFTCALX_NO_ACCELERATE`, `Vector`'s `+` / `*` fall back to the same scalar Swift implementation that `[Double]` uses. No win; no loss. The performance edge is specifically vDSP.
+
+**Operators in `MathOperators`**:
+- `A ⋅ v` — `Matrix<Double> · Vector`, returns `Vector`. Bridges `⋅` callers into `Vector`-land.
+- `α ⋅ v` — scalar `·` vector.
+- `u ⋅ v` — vector dot product (`Σ uᵢ · vᵢ`), routes through `cblas_ddot` on Apple.
+
+**FP integration**: `Vector` ships `fmap` / `bind` / `kleisli` / `liftA2` / `apply` mirroring FP's `Array+{Functor, Monad, Applicative}` extensions, so consumers can fold it into the same compositional pipelines they use for `Array`.
+
+**Use cases**: state vectors for biokinetic / chemical-kinetics ODE solvers; any place a `[Double]` flows through `RungeKutta4` / `RungeKutta45` / a custom `VectorState` consumer where the per-step `+` and `*` are non-trivial overhead.
 
 ---
 
@@ -689,7 +726,7 @@ let segments = RungeKutta45.denseSegments(
 
 **Accuracy note**: cubic Hermite is `O(h⁴)` locally — one order short of the 5th-order integrator. For the smooth linear ODEs typical of biokinetic / chemical-kinetics / control-system applications, this gap is invisible in practice (with `tolerance ≤ 1e-8`, interpolation error stays below `1e-9` even when RK45 takes day-long strides). Dormand-Prince's published 5th-order continuous extension would close the gap entirely; it's planned for a future release if a concrete use case (chaotic dynamics, ultra-fine plotting) demands it.
 
-**Performance note — `[Double]`-specialised fast path**: when the initial state is `[Double]`, Swift's overload resolution picks a concrete-typed `trajectory` / `denseSegments` that routes the per-stage state combination through `vDSP_vsmaD` (fused scalar-multiply-add). This is selected at compile time — no runtime type check, no protocol gymnastics. Other `NormedVectorState` conformers (e.g. `BidimensionalPoint<Double>`, custom state types) keep using the generic trajectory transparently. Apple-only; on Linux / non-Accelerate Apple builds (`-D SWIFTCALX_NO_ACCELERATE`), the generic path runs and uses the scalar Swift implementations of `+` and `*`.
+**Performance note — `Vector` opt-in fast state type**: wrapping your `[Double]` in `Vector` (`Vector([1.0, 2.0])` or `[1.0, 2.0].asVector`) routes every per-stage `+` and scalar `*` through vDSP-backed implementations via the protocol witness. The generic trajectory body is unchanged; the dispatch is automatic because `Vector` is its own concrete `VectorState` conformer with optimised operations. Apple-only (vDSP); on Linux / `-D SWIFTCALX_NO_ACCELERATE` the same `Vector` falls back to scalar Swift. See [Vector](#vector) for the type itself.
 
 **Read more**: Dormand, J.R. & Prince, P.J. (1980). *A family of embedded Runge-Kutta formulae*. Journal of Computational and Applied Mathematics 6(1): 19–26. Hairer, Nørsett & Wanner, *Solving Ordinary Differential Equations I: Nonstiff Problems* (Springer, 1993), §II.5 (algorithm) and §II.6 (dense output). [Wikipedia — Dormand-Prince method](https://en.wikipedia.org/wiki/Dormand%E2%80%93Prince_method); [Cubic Hermite spline](https://en.wikipedia.org/wiki/Cubic_Hermite_spline).
 
