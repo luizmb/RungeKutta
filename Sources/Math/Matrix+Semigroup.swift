@@ -4,19 +4,21 @@ import RealNumber
 extension Matrix {
     /// `Matrix` under elementwise addition as a **semigroup** (not a monoid).
     ///
-    /// `Semigroup` rather than `Monoid` because the identity (the zero matrix)
-    /// depends on the matrix shape — `Monoid.identity` is a `static var Self`
-    /// that has no way to pick `rows` or `columns`. ``sconcat(_:_:)`` handles
-    /// non-empty folds without needing an identity:
+    /// Naming matches FP's ``NumericMonoid/Sum`` — `Sum` is what we'd reach for
+    /// in any other "elementwise addition under a wrapper" context. `Semigroup`
+    /// rather than `Monoid` because the identity (the zero matrix) depends on
+    /// the matrix shape — `Monoid.identity` is a `static var Self` that has no
+    /// way to pick `rows` or `columns`. ``sconcat(_:_:)`` handles non-empty
+    /// folds without needing an identity:
     ///
     /// ```swift
-    /// let total = sconcat(Matrix.Additive(matrices[0]), matrices.dropFirst().map(Matrix.Additive.init))
+    /// let total = sconcat(Matrix.Sum(matrices[0]), matrices.dropFirst().map(Matrix.Sum.init))
     /// total.rawValue   // matrix sum
     /// ```
     ///
     /// All operands in a fold must share the same shape — `combine` calls the
     /// shape-checked elementwise `+` underneath.
-    public struct Additive: Semigroup, RawRepresentable {
+    public struct Sum: Semigroup, RawRepresentable {
         public let rawValue: Matrix<Scalar>
 
         public init(_ rawValue: Matrix<Scalar>) {
@@ -27,18 +29,16 @@ extension Matrix {
             self.init(rawValue)
         }
 
-        public static func combine(_ lhs: Additive, _ rhs: Additive) -> Additive {
-            Additive(lhs.rawValue + rhs.rawValue)
+        public static func combine(_ lhs: Sum, _ rhs: Sum) -> Sum {
+            Sum(lhs.rawValue + rhs.rawValue)
         }
     }
 
     /// `Matrix` under matrix multiplication as a **semigroup** (not a monoid).
     ///
-    /// `Semigroup` rather than `Monoid` because the multiplicative identity is
-    /// the `n × n` identity matrix `Iₙ` — again, `static var identity` can't
-    /// pick a size. The semigroup is also restricted to **square** matrices:
-    /// the elementwise product is not closed under arbitrary rectangular
-    /// shapes the way addition is.
+    /// Naming matches FP's ``NumericMonoid/Product``. `Semigroup` rather than
+    /// `Monoid` because the multiplicative identity is the `n × n` identity
+    /// matrix `Iₙ` — again, `static var identity` can't pick a size.
     ///
     /// This is the algebraic structure behind Birchall's matrix-exponential
     /// semigroup: `exp((s + t) · A) = exp(s · A) · exp(t · A)`. For the
@@ -46,7 +46,7 @@ extension Matrix {
     /// starting vector `n` times), see ``Matrix/actions(on:count:)`` — it
     /// avoids the O(n³) per step cost of multiplying matrix powers and just
     /// does O(n²) per step mat-vec.
-    public struct Multiplicative: Semigroup, RawRepresentable {
+    public struct Product: Semigroup, RawRepresentable {
         public let rawValue: Matrix<Scalar>
 
         public init(_ rawValue: Matrix<Scalar>) {
@@ -57,8 +57,8 @@ extension Matrix {
             self.init(rawValue)
         }
 
-        public static func combine(_ lhs: Multiplicative, _ rhs: Multiplicative) -> Multiplicative {
-            Multiplicative(lhs.rawValue * rhs.rawValue)
+        public static func combine(_ lhs: Product, _ rhs: Product) -> Product {
+            Product(lhs.rawValue * rhs.rawValue)
         }
     }
 }

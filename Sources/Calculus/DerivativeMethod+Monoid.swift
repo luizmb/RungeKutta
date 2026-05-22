@@ -3,12 +3,6 @@ import Math
 import RealNumber
 
 extension DerivativeMethod {
-    /// The no-op derivative method: returns the input function unchanged, claims
-    /// order 0. Identity for left-to-right composition via ``then(_:)``.
-    public static var identity: DerivativeMethod<Scalar> {
-        DerivativeMethod(order: 0) { $0 }
-    }
-
     /// Compose two methods left-to-right: apply `self` first, then `other` to
     /// the resulting slope function. Orders add.
     ///
@@ -40,4 +34,10 @@ extension DerivativeMethod: Semigroup {
     }
 }
 
-extension DerivativeMethod: Monoid {}
+extension DerivativeMethod: Monoid {
+    /// The no-op derivative method: returns the input function unchanged, claims
+    /// order 0. Identity for left-to-right composition via ``then(_:)``.
+    public static var identity: DerivativeMethod<Scalar> {
+        DerivativeMethod(order: 0) { $0 }
+    }
+}
