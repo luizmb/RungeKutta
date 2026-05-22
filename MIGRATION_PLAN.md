@@ -24,6 +24,7 @@ Snapshot: 2026-05-21. The original "migration plan" (strip RungeKutta down to ma
   - `Matrix.actions(on:count:)` — iterated semigroup action `[x, M·x, M²·x, …, Mⁿ·x]`. The practical mechanic behind Birchall's matrix-exponential semigroup: one expensive `exp(Δt·A)` + n cheap mat-vecs.
   - `BidimensionalPoint` and `TridimensionalPoint` gain full vector-space arithmetic (`+`, `-`, scalar `*`, `.zero`, `Equatable`, `VectorState` conformance).
 - **First SwiftCalx release `v0.1.0` (2026-05-21)**. Tagged via the new `create-rc` / `promote-rc` automation. DocC site live at https://luizmb.github.io/SwiftCalx/.
+- **RK45 dense output (2026-05-21)**. `RungeKutta45.trajectory(...)` replaced with the time-list overload `trajectory(at: [Double], ...) -> [State]`. Internally stores both endpoint slopes per accepted segment and interpolates with cubic Hermite (`O(h⁴)`, `C¹`-continuous). The adaptive integrator's raw time grid is still exposed via `RungeKutta45.denseSegments(...) -> [Segment]` for diagnostic use. Breaking change to the trajectory API — landed for SwiftCalx 0.2.0. Closes the MCM RK45 problem: consumers no longer need to cap `maxStep` to keep linear resampling accurate.
 
 ## Current layout
 
@@ -70,8 +71,8 @@ Conventions:
 
 ## ⏳ Pending
 
-### RK45 dense output (replaces current trajectory API)
-Dormand-Prince's published 5th-order interpolant — store slopes alongside accepted samples; expose `RungeKutta45.trajectory(at: [Double], …) -> [State]` that returns values at user-requested times via cubic-Hermite interpolation. Removes the current adaptive-then-resample-with-linear pattern (which forces consumers to cap `maxStep` and accept 1e-6 cross-solver tolerance). Breaking change — tag SwiftCalx 0.2.0 once landed.
+### Dormand-Prince 5th-order continuous extension (future RK45 upgrade)
+The current dense output uses cubic-Hermite interpolation between accepted RK45 samples (`O(h⁴)` accuracy, one order short of the 5th-order integrator). Dormand-Prince's published 5th-order continuous extension uses all 7 stage slopes — matches the integrator's accuracy floor. ~50 lines of additional Butcher-tableau-style coefficients. Defer until a use case needs the extra order.
 
 ### Bump MCM (consumer)
 `MultiCompartmentModel` will pick up SwiftCalx 0.2.0 once RK45 dense output lands. Gets a `SolverMethod.rungeKutta45(tolerance:)` case wired through dense output (tighter cross-solver tolerance, no manual `maxStep` cap), plus a `SolverMethod.birchall(composition:)` parameter to pick between today's per-time `Birchall.matrixExponential(t·A)` approach and the new semigroup-composition approach (`exp(Δt·A)` computed once, then `Matrix.actions(on: x₀, count: n)`). The per-time path also gets a `concurrentMap` for free parallelism across independent matrix exponentials.
