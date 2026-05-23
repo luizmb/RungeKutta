@@ -53,10 +53,10 @@ final class VectorTests: XCTestCase {
         XCTAssertEqual(doubled, AcceleratedVector([2.0, 4.0, 6.0]))
     }
 
-    func testFilterReducesToArray() {
+    func testFilterPreservesType() {
         let v = AcceleratedVector([1.0, -2.0, 3.0, -4.0])
         let positives = v.filter { $0 > 0 }
-        XCTAssertEqual(positives, [1.0, 3.0])
+        XCTAssertEqual(positives, AcceleratedVector([1.0, 3.0]))
     }
 
     func testReduceWorks() {

@@ -82,7 +82,13 @@ extension AcceleratedVector: Hashable {}
 
 extension AcceleratedVector: Semigroup {
     public static func combine(_ lhs: AcceleratedVector, _ rhs: AcceleratedVector) -> AcceleratedVector {
-        AcceleratedVector(lhs.storage + rhs.storage)
+        // NB: use `append(contentsOf:)`, not `lhs.storage + rhs.storage` —
+        // `Array: VectorState where Element: ℝ` (VectorState.swift) defines
+        // `+` for `[Double]` to be *elementwise addition*, which silently
+        // wins over stdlib's `RangeReplaceableCollection.+` concatenation.
+        var concatenated = lhs.storage
+        concatenated.append(contentsOf: rhs.storage)
+        return AcceleratedVector(concatenated)
     }
 }
 
